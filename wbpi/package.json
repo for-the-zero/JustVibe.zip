@@ -1,0 +1,10 @@
+{
+  "name": "wbpi",
+  "version": "0.1.0",
+  "description": "Minimal Bilibili Web API client (WBI signing) for Node/Bun",
+  "type": "module",
+  "exports": "./src/wbpi.mjs",
+  "scripts": {
+    "test": "node test.mjs"
+  }
+}

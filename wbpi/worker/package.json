@@ -1,0 +1,20 @@
+{
+  "name": "wbpi-grpc-worker",
+  "version": "0.1.0",
+  "description": "Cloudflare Worker: bilibili gRPC (grpc.biliapi.net) + protobuf JSON codec, port of the wbpi grpc-wasm version",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "gen": "pbjs -p ../grpc-wasm/proto -t static-module -w esm --no-comments --no-typeurl --no-verify --no-create --no-delimited -o src/proto.js ../grpc-wasm/proto/bilibili/app/show/popular/v1/popular.proto ../grpc-wasm/proto/bilibili/app/view/v1/view.proto ../grpc-wasm/proto/bilibili/metadata/metadata.proto ../grpc-wasm/proto/bilibili/ad/v1/ad.proto ../grpc-wasm/proto/bilibili/app/archive/v1/archive.proto",
+    "test": "node test.mjs",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "protobufjs": "^8.8.1"
+  },
+  "devDependencies": {
+    "protobufjs-cli": "^2.7.1",
+    "wrangler": "^4.156.0"
+  }
+}
