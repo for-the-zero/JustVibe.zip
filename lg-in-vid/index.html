@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>液态玻璃视频编辑器</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <header id="top">
+    <label class="btn" id="openBtn">导入视频<input id="file" type="file" accept="video/*" hidden /></label>
+    <span class="tsep"></span>
+    <button class="btn" id="playBtn" disabled>播放</button>
+    <span id="time" class="mono">0:00.0 / 0:00.0</span>
+    <span class="grow"></span>
+    <div id="expBox" hidden>
+      <span id="expText" class="dim">导出中</span>
+      <div id="expBar"><i></i></div>
+      <button class="btn" id="cancelBtn">取消</button>
+    </div>
+    <span id="expMsg" class="dim"></span>
+    <button class="btn primary" id="exportBtn" disabled>导出 MP4</button>
+  </header>
+
+  <main>
+    <div id="view">
+      <div id="hint">
+        <p>导入视频后开始编辑</p>
+        <p class="dim">拖拽视频文件到窗口任意位置也可导入</p>
+      </div>
+      <div id="stage" hidden>
+        <video id="video" playsinline></video>
+        <div id="sel" hidden>
+          <div class="hdl" data-h="nw"></div>
+          <div class="hdl" data-h="ne"></div>
+          <div class="hdl" data-h="sw"></div>
+          <div class="hdl" data-h="se"></div>
+        </div>
+      </div>
+    </div>
+
+    <aside id="insp">
+      <section>
+        <h3>图层 <button class="mini" id="addBtn" disabled>+ 添加</button></h3>
+        <div id="layerList"><span class="dim">暂无图层</span></div>
+      </section>
+      <section id="propsBox" hidden>
+        <h3>图层属性 <button class="mini danger" id="delBtn">删除</button></h3>
+        <div class="frow">
+          <label>开始</label><input id="pStart" class="num" type="number" min="0" step="0.05" />
+          <label>结束</label><input id="pEnd" class="num" type="number" min="0" step="0.05" />
+        </div>
+        <div class="frow">
+          <label>形状</label>
+          <div class="seg" id="shapeSeg">
+            <button data-shape="rect">矩形</button>
+            <button data-shape="pill">胶囊</button>
+            <button data-shape="circle">圆形</button>
+          </div>
+        </div>
+        <div id="pRows"></div>
+        <div class="frow">
+          <label>染色颜色</label><input id="pColor" type="color" value="#ffffff" />
+        </div>
+        <div class="frow">
+          <label class="ck"><input type="checkbox" id="pCa" /> 色散</label>
+          <label class="ck"><input type="checkbox" id="pSh" checked /> 投影</label>
+        </div>
+        <div class="frow">
+          <button class="mini" id="kfAdd">+ 关键帧</button>
+          <button class="mini" id="kfDel">− 删帧</button>
+          <span class="dim" id="kfN"></span>
+        </div>
+      </section>
+      <section>
+        <h3>全局材质</h3>
+        <div id="matRows"></div>
+        <div class="prow">
+          <label class="ck"><input type="checkbox" id="gCa" /> 色散</label>
+          <label class="ck"><input type="checkbox" id="gSh" checked /> 投影</label>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <footer id="tl">
+    <div id="tlScroll">
+      <div class="trow" id="rulerRow">
+        <div class="thead tpad">
+          <button class="zbtn" id="zOut" title="缩小">−</button>
+          <span id="zPct" class="zlab dim">100 px/s</span>
+          <button class="zbtn" id="zIn" title="放大">＋</button>
+          <button class="zbtn" id="zFit" title="缩放至全部">适应</button>
+        </div>
+        <div id="ruler"></div>
+      </div>
+      <div id="rows"></div>
+      <div id="playhead"></div>
+    </div>
+  </footer>
+
+  <div id="loadModal" hidden>
+    <div class="lmbox">
+      <div class="lmspin"></div>
+      <span id="loadText" class="lmtext">正在载入视频…</span>
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
