@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>颜文字拼装器 · Kaomoji Builder</title>
+<style>
+:root{
+  --pink:#ff6f9c; --pink-deep:#f0497f; --pink-soft:#ffd9e8; --pink-faint:#fff0f6;
+  --purple:#8b7cf6; --purple-soft:#e8e4ff;
+  --ink:#3d3244; --muted:#a294ad; --line:#f3dfe9;
+  --kao:"Yu Gothic UI","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo","MS PGothic","Noto Sans CJK JP","Noto Sans SC",system-ui,sans-serif;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--kao); color:var(--ink);
+  background:linear-gradient(160deg,#fff5f8 0%,#f6f1ff 45%,#eef6ff 100%);
+  min-height:100vh;
+}
+/* 背景水印 */
+#bg{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;}
+#bg span{position:absolute;opacity:.07;font-family:var(--kao);font-weight:bold;color:var(--pink-deep);white-space:nowrap;}
+
+header{
+  position:relative;z-index:2;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:14px 22px;
+  background:rgba(255,255,255,.75);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.logo{font-family:var(--kao);font-size:30px;color:var(--pink-deep);transform:rotate(-6deg);text-shadow:0 3px 0 var(--pink-soft);}
+.titles{display:flex;flex-direction:column;margin-right:auto;}
+h1{font-size:21px;margin:0;letter-spacing:1px;}
+.sub{font-size:12px;color:var(--muted);}
+nav.tabs{display:flex;gap:6px;background:#fff;border:1px solid var(--line);padding:4px;border-radius:999px;box-shadow:0 2px 8px rgba(240,73,127,.08);}
+nav.tabs button{
+  border:0;background:transparent;color:var(--ink);font-family:inherit;
+  padding:7px 16px;border-radius:999px;font-size:14px;cursor:pointer;transition:.18s;
+}
+nav.tabs button.active{background:linear-gradient(120deg,var(--pink),var(--purple));color:#fff;box-shadow:0 3px 10px rgba(240,73,127,.35);}
+nav.tabs .badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--pink);color:#fff;font-size:11px;line-height:17px;margin-left:4px;}
+.hact{display:flex;gap:8px;}
+.btn{
+  border:0;font-family:inherit;font-size:14px;cursor:pointer;border-radius:999px;
+  padding:9px 18px;transition:.18s;display:inline-flex;align-items:center;gap:6px;
+}
+.btn-primary{background:linear-gradient(120deg,var(--pink),#ff9a76);color:#fff;box-shadow:0 4px 14px rgba(240,73,127,.35);}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(240,73,127,.45);}
+.btn-ghost{background:#fff;border:1px solid var(--line);color:var(--ink);}
+.btn-ghost:hover{border-color:var(--pink);color:var(--pink-deep);}
+.btn:active{transform:scale(.96);}
+
+main{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:18px 16px 60px;}
+.card{
+  background:rgba(255,255,255,.86);border:1px solid var(--line);border-radius:20px;
+  padding:18px;box-shadow:0 8px 30px rgba(180,120,160,.10);margin-bottom:16px;
+}
+.card h2{margin:0 0 12px;font-size:15px;color:var(--ink);letter-spacing:.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.card h2 .cnt{font-size:12px;color:var(--muted);font-weight:normal;}
+
+/* ===== 预览 ===== */
+.preview-card{background:linear-gradient(135deg,rgba(255,240,246,.95),rgba(240,236,255,.95));}
+.pv-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);}
+.pv-tools .spacer{flex:1;}
+.pv-tools label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none;}
+.sizebtn{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:#fff;cursor:pointer;font-family:inherit;color:var(--ink);font-size:13px;}
+.sizebtn:hover{border-color:var(--pink);}
+#preview{
+  font-family:var(--kao);text-align:center;padding:26px 10px;margin:10px 0;
+  font-size:38px;line-height:1.5;word-break:break-all;user-select:all;cursor:pointer;
+  background:rgba(255,255,255,.6);border:2px dashed var(--pink-soft);border-radius:16px;min-height:100px;
+  display:flex;align-items:center;justify-content:center;transition:border-color .2s;
+}
+#preview:hover{border-color:var(--pink);}
+#preview.bump{animation:bump .28s ease;}
+@keyframes bump{0%{transform:scale(1)}35%{transform:scale(1.06)}100%{transform:scale(1)}}
+.pv-foot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+#faceInput{
+  flex:1;min-width:160px;font-family:var(--kao);font-size:15px;padding:9px 12px;border-radius:12px;
+  border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;
+}
+#faceInput:focus{border-color:var(--pink);}
+#faceLen{font-size:12px;color:var(--muted);}
+
+/* ===== 拼装台槽位 ===== */
+#slotRow{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+.slot{
+  position:relative;min-width:66px;padding:7px 8px 6px;border-radius:14px;cursor:pointer;
+  border:1.6px dashed #e9c4d6;background:#fff;transition:.15s;text-align:center;
+}
+.slot:hover{border-color:var(--pink);transform:translateY(-2px);box-shadow:0 5px 14px rgba(240,73,127,.15);}
+.slot.filled{border-style:solid;border-color:var(--pink);background:var(--pink-faint);}
+.slot.ghost{background:#fffdf4;}
+.slot-label{display:block;font-size:10.5px;color:var(--muted);letter-spacing:.5px;}
+.slot-val{display:block;font-family:var(--kao);font-size:19px;line-height:1.5;min-height:29px;word-break:break-all;}
+.slot.filled .slot-val{color:var(--pink-deep);}
+.slot.ghost .slot-val{color:#d9c9a8;}
+.slot-btns{position:absolute;top:-9px;right:-6px;display:flex;gap:3px;opacity:0;transition:.15s;}
+.slot:hover .slot-btns,.slot:focus-within .slot-btns{opacity:1;}
+.mini{
+  width:21px;height:21px;border-radius:50%;border:0;cursor:pointer;font-size:10px;line-height:1;
+  background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;
+}
+.mini:hover{background:var(--pink);color:#fff;}
+.lists{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:13px;align-items:center;}
+.lists .lname{color:var(--muted);font-size:12px;}
+.chiprow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:30px;}
+.chip{
+  display:inline-flex;align-items:center;gap:5px;background:var(--purple-soft);color:var(--ink);
+  border-radius:999px;padding:3px 6px 3px 10px;font-family:var(--kao);font-size:15px;
+}
+.chip .x{border:0;background:rgba(0,0,0,.08);width:17px;height:17px;border-radius:50%;cursor:pointer;font-size:10px;line-height:1;color:var(--ink);}
+.chip .x:hover{background:var(--pink);color:#fff;}
+.chip.flankchip{cursor:pointer;background:#fff;border:1px solid var(--line);font-size:13px;padding:4px 12px;}
+.chip.flankchip.active{background:linear-gradient(120deg,var(--pink),var(--purple));color:#fff;border-color:transparent;}
+.none{color:#cbbfd4;font-size:12px;}
+
+/* ===== 情绪速拼 ===== */
+#presetRow{display:flex;flex-wrap:wrap;gap:8px;}
+.preset{
+  border:1px solid var(--line);background:#fff;border-radius:14px;padding:8px 14px;cursor:pointer;
+  font-family:inherit;font-size:14px;color:var(--ink);transition:.15s;
+}
+.preset:hover{border-color:var(--pink);background:var(--pink-faint);transform:translateY(-2px);box-shadow:0 5px 12px rgba(240,73,127,.15);}
+.preset b{font-weight:600;}
+
+/* ===== 组件库 ===== */
+.lib-head{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+#libSearch{
+  font-family:inherit;font-size:14px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);
+  outline:none;min-width:170px;background:#fff;
+}
+#libSearch:focus{border-color:var(--pink);}
+#libTabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.pill{
+  border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;cursor:pointer;
+  font-family:inherit;font-size:13px;color:var(--ink);transition:.15s;
+}
+.pill:hover{border-color:var(--pink);}
+.pill.active{background:linear-gradient(120deg,var(--pink),var(--purple));color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(240,73,127,.3);}
+#libMode{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;min-height:0;}
+.modepill{border:1px dashed var(--line);background:#fffdf7;border-radius:999px;padding:4px 12px;cursor:pointer;font-family:inherit;font-size:12px;color:var(--muted);}
+.modepill.active{border-style:solid;border-color:var(--purple);color:var(--purple);background:var(--purple-soft);}
+#libGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:8px;max-height:400px;overflow-y:auto;padding:4px 2px;}
+.comp{
+  border:1px solid #f3e3ec;background:#fff;border-radius:13px;padding:8px 4px;cursor:pointer;text-align:center;
+  font-family:inherit;transition:.13s;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:center;
+}
+.comp:hover{border-color:var(--pink);background:var(--pink-faint);transform:translateY(-2px);box-shadow:0 4px 10px rgba(240,73,127,.14);}
+.comp:active{transform:scale(.94);}
+.comp .ch{font-family:var(--kao);font-size:20px;line-height:1.4;word-break:break-all;color:var(--ink);}
+.comp .d{font-size:10px;color:var(--muted);line-height:1.3;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:26px 0;font-size:14px;}
+.hint{font-size:12px;color:var(--muted);}
+
+/* ===== 图鉴 ===== */
+.gbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+#gSearch{flex:1;min-width:180px;font-family:inherit;font-size:14px;padding:9px 14px;border-radius:12px;border:1px solid var(--line);outline:none;background:#fff;}
+#gSearch:focus{border-color:var(--pink);}
+#gMood{font-family:inherit;font-size:14px;padding:9px 10px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--ink);outline:none;cursor:pointer;}
+#galleryGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;}
+.gcard{
+  background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:16px;padding:12px;
+  display:flex;flex-direction:column;gap:6px;transition:.15s;
+}
+.gcard:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(180,120,160,.18);border-color:var(--pink-soft);}
+.gface{
+  border:0;background:transparent;font-family:var(--kao);font-size:21px;line-height:1.5;word-break:break-all;
+  color:var(--ink);cursor:pointer;text-align:center;padding:8px 2px;border-radius:10px;
+}
+.gface:hover{background:var(--pink-faint);color:var(--pink-deep);}
+.gdesc{font-size:12px;color:var(--muted);text-align:center;min-height:16px;}
+.gmeta{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;}
+.tag{font-size:10.5px;background:var(--purple-soft);color:var(--purple);border-radius:999px;padding:2px 9px;}
+.tag.pink{background:var(--pink-faint);color:var(--pink-deep);}
+.gbtns{display:flex;gap:6px;}
+.gbtns button{
+  flex:1;border:1px solid var(--line);background:#fff;border-radius:9px;padding:5px 4px;cursor:pointer;
+  font-family:inherit;font-size:12px;color:var(--ink);transition:.15s;
+}
+.gbtns button:hover{border-color:var(--pink);color:var(--pink-deep);background:var(--pink-faint);}
+
+/* ===== 收藏 ===== */
+#savedGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+.scard{position:relative;background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:14px;padding:10px;}
+.sface{
+  width:100%;border:0;background:transparent;font-family:var(--kao);font-size:19px;word-break:break-all;
+  color:var(--ink);cursor:pointer;text-align:center;padding:8px 4px;line-height:1.5;
+}
+.sface:hover{color:var(--pink-deep);}
+.sx{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;border:0;background:rgba(0,0,0,.05);cursor:pointer;font-size:10px;color:var(--ink);}
+.sx:hover{background:var(--pink);color:#fff;}
+.shead{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.shead h2{margin:0;}
+
+footer{position:relative;z-index:1;text-align:center;color:var(--muted);font-size:12px;padding:10px 16px 30px;}
+
+#toast{
+  position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:#fff;font-family:var(--kao);font-size:15px;
+  padding:11px 22px;border-radius:999px;opacity:0;pointer-events:none;transition:.25s;z-index:99;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);max-width:90vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+@media (max-width:640px){
+  header{padding:10px 14px;gap:10px;}
+  .titles{margin-right:0;}
+  h1{font-size:18px;}
+  #preview{font-size:30px;}
+  .slot{min-width:60px;}
+}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+
+<header>
+  <div class="logo">(◕‿◕)</div>
+  <div class="titles">
+    <h1>颜文字拼装器</h1>
+    <span class="sub" id="subTitle">加载中…</span>
+  </div>
+  <nav class="tabs">
+    <button data-page="build" class="active">🧩 拼装台</button>
+    <button data-page="gallery">📖 图鉴</button>
+    <button data-page="saved">⭐ 收藏<span class="badge" id="savedCount">0</span></button>
+  </nav>
+  <div class="hact">
+    <button class="btn btn-primary" id="btnRandom">🎲 随机拼一个</button>
+    <button class="btn btn-ghost" id="btnClear">🧹 清空</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============ 拼装台 ============ -->
+  <section id="page-build">
+    <div class="card preview-card">
+      <div class="pv-tools">
+        <span>字号</span>
+        <button class="sizebtn" id="sizeDown">－</button>
+        <button class="sizebtn" id="sizeUp">＋</button>
+        <span class="spacer"></span>
+        <label><input type="checkbox" id="autoFrame" checked> 自动脸框 ( )</label>
+      </div>
+      <div id="preview" title="点击整行可全选复制">(´ω`)</div>
+      <div class="pv-foot">
+        <input id="faceInput" readonly value="">
+        <span id="faceLen"></span>
+        <button class="btn btn-primary" id="btnCopy">📋 复制</button>
+        <button class="btn btn-ghost" id="btnStar">⭐ 收藏</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🧩 拼装台 <span class="hint">点击槽位直达对应组件分类 · 悬停槽位可单独随机/清除</span></h2>
+      <div id="slotRow"></div>
+      <div class="lists">
+        <span class="lname">道具</span>
+        <div class="chiprow" id="propChips"></div>
+        <span class="lname">尾饰</span>
+        <div class="chiprow" id="tailChips"></div>
+        <span class="lname">环绕</span>
+        <div class="chiprow" id="flankChips"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🎭 情绪速拼 <span class="hint">一键按情绪随机换脸</span></h2>
+      <div id="presetRow"></div>
+    </div>
+
+    <div class="card">
+      <h2>📚 组件库 <span class="cnt" id="libCount"></span></h2>
+      <div class="lib-head">
+        <input id="libSearch" placeholder="🔍 搜索组件（如：猫、泪、星）">
+      </div>
+      <div id="libTabs"></div>
+      <div id="libMode"></div>
+      <div id="libGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ 图鉴 ============ -->
+  <section id="page-gallery" hidden>
+    <div class="card">
+      <h2>📖 颜文字图鉴 <span class="cnt" id="gCount"></span></h2>
+      <div class="gbar">
+        <input id="gSearch" placeholder="🔍 搜索颜文字 / 描述 / 标签…">
+        <select id="gMood"><option value="">全部情绪</option></select>
+      </div>
+    </div>
+    <div id="galleryGrid"></div>
+  </section>
+
+  <!-- ============ 收藏 ============ -->
+  <section id="page-saved" hidden>
+    <div class="card">
+      <div class="shead">
+        <h2>⭐ 我的收藏</h2>
+        <button class="btn btn-ghost" id="btnClearSaved">清空收藏</button>
+      </div>
+      <div class="hint" id="savedHint">点击颜文字即可复制</div>
+    </div>
+    <div id="savedGrid"></div>
+  </section>
+</main>
+
+<footer>数据来源：kaomoji_library.json（<span id="ftComps"></span> 组件 / <span id="ftKm"></span> 颜文字）· 纯前端单文件，可离线使用</footer>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ================= 数据 ================= */
+const COMPS = [["^","eyes","normal","上扬眯眼","happy,cheerful"],["´","eyes","normal","上扬小弯眼","happy,pleased"],["`","eyes","normal","反向小弯眼","happy,pleased"],["•","eyes","normal","小圆点眼","neutral,dot"],["·","eyes","normal","极小点眼","neutral,tiny"],["●","eyes","normal","大圆点眼","neutral,big"],["○","eyes","normal","空心圆眼","neutral,hollow"],["◉","eyes","normal","靶心眼","neutral,focused"],["◎","eyes","normal","双圆眼","neutral,focused"],["-","eyes","normal","一字眼","neutral,flat"],["=","eyes","normal","双横眼","neutral,flat"],["_","eyes","normal","下划线眼","sad,tired"],["￣","eyes","normal","上横线眼","neutral,flat"],["¯","eyes","normal","上横线眼","neutral,flat"],["¬","eyes","normal","倒钩眼","sarcastic,smug"],["◕","eyes","big","可爱大眼","cute,big"],["◔","eyes","big","半圆大眼","cute,big"],["◑","eyes","big","半圆大眼","cute,big"],["❍","eyes","big","大圆眼","big,round"],["★","eyes","sparkle","星星眼","star,sparkle,excited"],["☆","eyes","sparkle","空心星眼","star,sparkle,excited"],["✦","eyes","sparkle","四角星眼","star,sparkle"],["✧","eyes","sparkle","空心四角星眼","star,sparkle"],["✪","eyes","sparkle","圆中星眼","star,sparkle"],["✰","eyes","sparkle","阴影星眼","star,sparkle"],["＊","eyes","sparkle","全角星号眼","star,sparkle"],["*","eyes","sparkle","星号眼","star,sparkle"],[";","eyes","tear","泪眼","cry,tear,sad"],["；","eyes","tear","全角泪眼","cry,tear,sad"],["T","eyes","tear","T字泪眼","cry,tear,sad"],["╥","eyes","tear","大泪眼","cry,tear,sad"],["ಥ","eyes","tear","大泪眼（卡纳达文）","cry,tear,sad"],["︶","eyes","closed","弯弯笑眼","happy,closed"],["⌒","eyes","closed","弧形笑眼","happy,closed"],["⌣","eyes","closed","下弧笑眼","happy,closed"],["⌢","eyes","closed","上弧哭眼","sad,closed"],["?","eyes","confused","问号眼","confused,question"],["？","eyes","confused","全角问号眼","confused,question"],["¿","eyes","confused","倒问号眼","confused,question"],["x","eyes","dead","X字死眼","dead,unconscious"],["X","eyes","dead","X字死眼","dead,unconscious"],["×","eyes","dead","叉眼","dead,unconscious"],["╳","eyes","dead","叉眼","dead,unconscious"],["+","eyes","dead","十字眼","dead,unconscious"],["Φ","eyes","dead","螺旋眼","dead,unconscious"],["ↀ","eyes","dead","螺旋眼","dead,unconscious"],["@","eyes","dead","漩涡眼","dead,dizzy"],["♥","eyes","love","爱心眼","love,heart"],["♡","eyes","love","空心爱心眼","love,heart"],["❤","eyes","love","爱心眼","love,heart"],["❥","eyes","love","爱心眼","love,heart"],["❣","eyes","love","爱心眼","love,heart"],[">","eyes","angry","锐利怒眼","angry,sharp"],["<","eyes","angry","锐利怒眼","angry,sharp"],["▼","eyes","angry","下三角怒眼","angry,sharp"],["▽","eyes","angry","空心下三角怒眼","angry,sharp"],["◣","eyes","angry","左下三角怒眼","angry,sharp"],["◢","eyes","angry","右下三角怒眼","angry,sharp"],["°","eyes","dizzy","小度数眼","dizzy,small"],["✿","eyes","flower","花朵眼","cute,flower"],["❀","eyes","flower","花朵眼","cute,flower"],["❁","eyes","flower","花朵眼","cute,flower"],["u","eyes","letter","u字笑眼","happy,letter"],["U","eyes","letter","U字笑眼","happy,letter"],["w","eyes","letter","w字笑眼","happy,letter"],["W","eyes","letter","W字笑眼","happy,letter"],["v","eyes","letter","v字笑眼","happy,letter"],["V","eyes","letter","V字笑眼","happy,letter"],["n","eyes","letter","n字眼","neutral,letter"],["ω","eyes","letter","omega笑眼","happy,omega"],["O","eyes","letter","O字惊讶眼","surprised,open"],["o","eyes","letter","o字惊讶眼","surprised,open"],["0","eyes","letter","0字惊讶眼","surprised,open"],["Q","eyes","letter","Q字可爱眼","cute,open"],["q","eyes","letter","q字可爱眼","cute,open"],["⊙","eyes","letter","圆中点惊讶眼","surprised,open"],["ò","eyes","letter","带重音o眼","neutral,accent"],["ó","eyes","letter","带重音o眼","surprised,accent"],["ô","eyes","letter","带扬抑o眼","surprised,accent"],["õ","eyes","letter","带波浪o眼","surprised,accent"],["ö","eyes","letter","分音符o眼","surprised,diaeresis"],["ç","eyes","letter","下弯c眼","neutral,accent"],["é","eyes","letter","带重音e眼","happy,accent"],["è","eyes","letter","带重音e眼","sad,accent"],["ê","eyes","letter","带扬抑e眼","surprised,accent"],["à","eyes","letter","带重音a眼","sad,accent"],["á","eyes","letter","带重音a眼","happy,accent"],["益","eyes","kanji","益字怒眼","angry,kanji"],["皿","eyes","kanji","皿字怒眼","angry,kanji"],["冫","eyes","kanji","冫字冷眼","cold,kanji"],["Д","eyes","cyrillic","Д字惊讶眼","surprised,open"],["ㅂ","eyes","korean","ㅂ字笑眼","happy,korean"],["ㅇ","eyes","korean","ㅇ字眼","neutral,korean"],["ㅅ","eyes","korean","ㅅ字笑眼","happy,korean"],["ㅎ","eyes","korean","ㅎ字笑眼","happy,korean"],["ಠ","eyes","kannada","凝视眼（卡纳达文）","stare,disapproval"],["ರ","eyes","kannada","凝视眼","stare,disapproval"],["ದ","eyes","kannada","中性眼","neutral"],["ಧ","eyes","kannada","中性眼","neutral"],["ಸ","eyes","kannada","中性眼","neutral"],["◐","eyes","special","眨眼","cute,wink"],["◒","eyes","special","眨眼","cute,wink"],["◓","eyes","special","眨眼","cute,wink"],["◖","eyes","special","半月眼","cute,half"],["◗","eyes","special","半月眼","cute,half"],["◘","eyes","special","反色圆眼","cute,inverse"],["◙","eyes","special","反色圆眼","cute,inverse"],["◜","eyes","special","弧形眼","cute,arc"],["◝","eyes","special","弧形眼","cute,arc"],["◞","eyes","special","弧形眼","cute,arc"],["◟","eyes","special","弧形眼","cute,arc"],["◠","eyes","special","上弧笑眼","happy,arc"],["◡","eyes","special","下弧笑眼","happy,arc"],["◤","eyes","special","锐利眼","angry,sharp"],["◥","eyes","special","锐利眼","angry,sharp"],["1","eyes","digit","1字眼","neutral"],["6","eyes","digit","6字眼","neutral"],["9","eyes","digit","9字眼","neutral"],["_","mouth","smile","一字嘴","neutral,flat"],["-","mouth","smile","一字嘴","neutral,flat"],["‿","mouth","smile","上弯笑嘴","happy,smile"],["︶","mouth","smile","上弯笑嘴","happy,smile"],["⌣","mouth","smile","上弯笑嘴","happy,smile"],["◡","mouth","smile","上弯笑嘴","happy,smile"],["u","mouth","smile","u字笑嘴","happy,smile"],["U","mouth","smile","U字笑嘴","happy,smile"],["w","mouth","smile","w字笑嘴","happy,smile"],["W","mouth","smile","W字笑嘴","happy,smile"],["v","mouth","smile","v字笑嘴","happy,smile"],["V","mouth","smile","V字笑嘴","happy,smile"],["ω","mouth","smile","omega笑嘴","happy,cute"],["▽","mouth","smile","张大笑嘴","happy,open"],["△","mouth","smile","张大笑嘴","happy,open"],["∀","mouth","smile","倒A笑嘴","happy,open"],["∇","mouth","smile","倒三角笑嘴","happy,open"],["ー","mouth","smile","日文长音嘴","neutral,flat"],["―","mouth","smile","横线嘴","neutral,flat"],["━","mouth","smile","粗横线嘴","neutral,flat"],["⌢","mouth","cry","下弯哭嘴","sad,cry"],["︵","mouth","cry","下弯哭嘴","sad,cry"],["∩","mouth","cry","下弯哭嘴","sad,cry"],["º","mouth","cry","小圆哭嘴","sad,cry"],["°","mouth","cry","小圆哭嘴","sad,cry"],["o","mouth","surprised","o字惊讶嘴","surprised,open"],["O","mouth","surprised","O字惊讶嘴","surprised,open"],["0","mouth","surprised","0字惊讶嘴","surprised,open"],["○","mouth","surprised","空心圆嘴","surprised,open"],["◯","mouth","surprised","大空心圆嘴","surprised,open"],["□","mouth","surprised","方嘴","surprised,open"],["口","mouth","surprised","口字嘴","surprised,open"],["ロ","mouth","surprised","片假名ロ嘴","surprised,open"],["ρ","mouth","surprised","rho嘴","surprised,open"],["⊿","mouth","surprised","直角三角嘴","surprised,open"],["く","mouth","angry","く字怒嘴","angry"],["L","mouth","angry","L字怒嘴","angry"],["っ","mouth","angry","っ字怒嘴","angry"],["凸","mouth","angry","凸字中指嘴","angry,rude"],["3","mouth","pout","3字嘟嘴","cute,pout"],["ε","mouth","pout","epsilon嘟嘴","cute,pout"],["з","mouth","pout","з字亲吻嘴","cute,kiss"],["ξ","mouth","pout","xi亲吻嘴","cute,kiss"],["P","mouth","tongue","吐舌P","playful,tongue"],["p","mouth","tongue","吐舌p","playful,tongue"],["Þ","mouth","tongue","吐舌Þ","playful,tongue"],["þ","mouth","tongue","吐舌þ","playful,tongue"],["∂","mouth","tongue","吐舌∂","playful,tongue"],["├","mouth","tongue","吐舌├","playful,tongue"],["E","mouth","teeth","露齿E","happy,teeth"],["Ш","mouth","teeth","Ш字齿","happy,teeth"],["m","mouth","teeth","m字齿","happy,teeth"],["M","mouth","teeth","M字齿","happy,teeth"],["≡","mouth","teeth","三横齿","happy,teeth"],["*","mouth","kiss","星号亲吻嘴","kiss"],["✿","mouth","kiss","花朵亲吻嘴","kiss,flower"],["❀","mouth","kiss","花朵亲吻嘴","kiss,flower"],["Д","mouth","open","Д字张大嘴","surprised,open"],["A","mouth","open","A字张大嘴","surprised,open"],["▲","mouth","open","三角张大嘴","surprised,open"],["—","mouth","tight","抿嘴","neutral,tight"],["=","mouth","tight","抿嘴","neutral,tight"],["┐","mouth","smirk","歪嘴","smirk"],["┘","mouth","smirk","歪嘴","smirk"],["┌","mouth","smirk","歪嘴","smirk"],["└","mouth","smirk","歪嘴","smirk"],["¬","mouth","smirk","讽刺歪嘴","smirk,sarcastic"],["⌐","mouth","smirk","讽刺歪嘴","smirk,sarcastic"],["▼","mouth","triangle","倒黑三角嘴","angry"],["▲","mouth","triangle","正黑三角嘴","surprised,open"],["~","mouth","wavy","波浪笑嘴","happy,wavy"],["～","mouth","wavy","全角波浪嘴","happy,wavy"],["〰","mouth","wavy","波浪嘴","happy,wavy"],["≈","mouth","wavy","约等号波浪嘴","happy,wavy"],["∿","mouth","wavy","正弦波嘴","happy,wavy"],["•","mouth","round","小圆嘴","neutral,small"],["●","mouth","round","大圆嘴","neutral,big"],["⊙","mouth","round","圆中点嘴","surprised,open"],["ㅂ","mouth","korean","ㅂ字笑嘴","happy,korean"],["ㅅ","mouth","korean","ㅅ字笑嘴","happy,korean"],["ㅎ","mouth","korean","ㅎ字笑嘴","happy,korean"],["ㅋ","mouth","korean","ㅋ字大笑嘴","laugh,korean"],["ㅌ","mouth","korean","ㅌ字嘴","neutral,korean"],["ㄱ","mouth","korean","ㄱ字嘴","neutral,korean"],["ㄴ","mouth","korean","ㄴ字嘴","neutral,korean"],["の","mouth","japanese","の字嘴","cute"],["へ","mouth","japanese","へ字嘴","neutral"],["く","mouth","japanese","く字怒嘴","angry"],["つ","mouth","japanese","つ字怒嘴","angry"],["っ","mouth","japanese","っ字嘟嘴","cute,pout"],["ロ","mouth","japanese","ロ字嘴","surprised,open"],["ワ","mouth","japanese","ワ字嘴","surprised,open"],["ヮ","mouth","japanese","ヮ字嘴","surprised,open"],["田","mouth","chinese","田字嘴","neutral"],["回","mouth","chinese","回字嘴","surprised"],["吕","mouth","chinese","吕字嘴","neutral"],["–","mouth","closed","紧闭嘴","neutral,closed"],["∀","mouth","laugh","倒A大笑嘴","laugh,open"],["n","mouth","frown","n字下垂嘴","sad,frown"],["N","mouth","frown","N字下垂嘴","sad,frown"],["∪","mouth","frown","下垂嘴","sad,frown"],["∩","mouth","smile","上弯嘴","happy,smile"],["o","arms","hug","拥抱手臂o","hug,love"],["O","arms","hug","拥抱手臂O","hug,love"],["∩","arms","raise","举起手臂","cheer,raise"],["∪","arms","lower","垂下手臂","sad,lower"],["ヾ","arms","wave","挥手手臂","wave,greet"],["＜","arms","left","左手指","point,left"],["＞","arms","right","右手指","point,right"],["く","arms","left","左手挥","wave,left"],["ヽ","arms","right","右手挥","wave,right"],["ノ","arms","right","右手挥","wave,right"],["丿","arms","left","左手挥","wave,left"],["丶","arms","right","右手挥","wave,right"],["├","arms","left","左手指","point,left"],["┤","arms","right","右手指","point,right"],["┌","arms","left","左手举","raise,left"],["┐","arms","right","右手举","raise,right"],["└","arms","left","左手垂","lower,left"],["┘","arms","right","右手垂","lower,right"],["ㄟ","arms","left","左手挥","wave,left"],["ㄑ","arms","left","左手垂","lower,left"],["ㄱ","arms","left","左手举","raise,left"],["ㄴ","arms","left","左手垂","lower,left"],["⊂","arms","hug","拥抱左手臂","hug,love"],["⊃","arms","hug","拥抱右手臂","hug,love"],["⊆","arms","hug","拥抱左手臂","hug,love"],["⊇","arms","hug","拥抱右手臂","hug,love"],["ξ","arms","left","左手挥","wave,left"],["ζ","arms","left","左手挥","wave,left"],["ψ","arms","right","右手挥","wave,right"],["ф","arms","hug","拥抱手臂","hug,love"],["Φ","arms","hug","拥抱手臂","hug,love"],["c","arms","left","左手挥","wave,left"],["C","arms","left","左手挥","wave,left"],["ʕ","arms","left","熊耳左手臂","bear,hug"],["ʔ","arms","right","熊耳右手臂","bear,hug"],["ლ","arms","left","跳舞左手","dancing,wave"],["φ","arms","right","跳舞右手","dancing,wave"],["༼","arms","left","熊耳左手臂","bear,hug"],["༽","arms","right","熊耳右手臂","bear,hug"],["つ","arms","left","左手挥","wave,left"],["っ","arms","left","左手挥","wave,left"],["づ","arms","left","左手挥","wave,left"],["⊃","arms","right","右手指","point,right"],["⊂","arms","left","左手指","point,left"],["b","hands","finger","竖大拇指","thumbs_up,ok"],["d","hands","finger","倒大拇指","thumbs_down,no"],["q","hands","finger","OK手势","point,ok"],["p","hands","finger","OK手势","point,ok"],["凸","hands","finger","中指","rude,middle_finger"],["y","hands","finger","剪刀手","peace,victory"],["Y","hands","finger","剪刀手","peace,victory"],["V","hands","finger","剪刀手","peace,victory"],["v","hands","finger","剪刀手","peace,victory"],["✌","hands","finger","剪刀手","peace,victory"],["☝","hands","finger","上指","point,up"],["☞","hands","finger","右指","point,right"],["☜","hands","finger","左指","point,left"],["☟","hands","finger","下指","point,down"],["✍","hands","finger","写字手","write"],["✊","hands","fist","拳头","fist,power"],["✋","hands","palm","手掌","stop,hi"],["👋","hands","wave","挥手","wave,hi"],["👌","hands","ok","OK手势","ok,perfect"],["👍","hands","thumbs_up","点赞","thumbs_up,like"],["👎","hands","thumbs_down","踩","thumbs_down,dislike"],["👏","hands","clap","鼓掌","clap,applause"],["🙌","hands","raise","举手","cheer,raise"],["🙏","hands","pray","祈祷","pray,thanks"],["🤲","hands","palms_together","双手合十向上","pray,receive"],["🤝","hands","shake","握手","shake,deal"],["👐","hands","open","张开双手","open,receive"],["🖐","hands","five","五指张开","hi,five"],["🖖","hands","vulcan","瓦肯手势","hi,vulcan"],["🤙","hands","call","打电话手势","call,hang_loose"],["🤘","hands","rock","摇滚手势","rock,metal"],["🤞","hands","crossed","交叉手指祈愿","hope,luck"],["*","cheek","blush","腮红","blush,shy"],["✲","cheek","blush","腮红","blush,shy"],["✱","cheek","blush","腮红","blush,shy"],["✳","cheek","blush","腮红","blush,shy"],["❉","cheek","blush","腮红","blush,shy"],["❋","cheek","blush","腮红","blush,shy"],["＊","cheek","blush","腮红","blush,shy"],["✿","cheek","flower","花朵腮红","cute,flower"],["❀","cheek","flower","花朵腮红","cute,flower"],["❁","cheek","flower","花朵腮红","cute,flower"],["✾","cheek","flower","花朵腮红","cute,flower"],["✽","cheek","flower","花朵腮红","cute,flower"],["♡","cheek","heart","爱心腮红","love,heart"],["♥","cheek","heart","爱心腮红","love,heart"],["❤","cheek","heart","爱心腮红","love,heart"],["///","cheek","blush_lines","线条腮红","blush,shy,embarrassed"],["⁄⁄","cheek","blush_lines","斜线腮红","blush,shy"],["≡","cheek","lines","三横腮红","blush,shy"],["=","cheek","lines","双横腮红","blush,shy"],["-","cheek","lines","单横腮红","blush,shy"],["。","cheek","dot","圆点腮红","blush,shy"],["・","cheek","dot","中点腮红","blush,shy"],["•","cheek","dot","圆点腮红","blush,shy"],["●","cheek","dot","大圆点腮红","blush,shy"],["◉","cheek","dot","靶心腮红","blush,shy"],["◎","cheek","dot","双圆腮红","blush,shy"],["๑","cheek","thai","泰文腮红","cute,blush"],["็","cheek","thai","泰文腮红","blush,cute"],["้","cheek","thai","泰文腮红","blush,cute"],["💗","cheek","heart","跳动爱心腮红","love,heart"],["💕","cheek","heart","双爱心腮红","love,heart"],["💓","cheek","heart","跳动爱心腮红","love,heart"],["💖","cheek","heart","闪亮爱心腮红","love,heart"],["💘","cheek","heart","爱心箭腮红","love,heart,arrow"],["💙","cheek","heart","蓝心腮红","love,heart,blue"],["💚","cheek","heart","绿心腮红","love,heart,green"],["💛","cheek","heart","黄心腮红","love,heart,yellow"],["🧡","cheek","heart","橙心腮红","love,heart,orange"],["💜","cheek","heart","紫心腮红","love,heart,purple"],["🖤","cheek","heart","黑心腮红","love,heart,black"],["🤍","cheek","heart","白心腮红","love,heart,white"],["🤎","cheek","heart","棕心腮红","love,heart,brown"],["💞","cheek","heart","旋转爱心腮红","love,heart"],["❣","cheek","heart","爱心感叹腮红","love,heart"],["♨","cheek","steam","蒸汽腮红","hot,steam"],["💢","cheek","anger","青筋腮红","angry,vein"],["💧","cheek","sweat","汗滴腮红","sweat,nervous"],["💦","cheek","sweat","汗滴腮红","sweat,nervous"],[";","sweat_tear","tear","泪滴","cry,tear,sad"],["；","sweat_tear","tear","全角泪滴","cry,tear,sad"],["'","sweat_tear","tear","泪滴","cry,tear,sad"],["´","sweat_tear","tear","泪滴","cry,tear,sad"],["`","sweat_tear","tear","泪滴","cry,tear,sad"],["T","sweat_tear","tear","T字泪","cry,tear,sad"],["💧","sweat_tear","drop","汗滴","sweat,nervous"],["💦","sweat_tear","drops","汗滴","sweat,nervous"],["😢","sweat_tear","cry","哭泣脸","cry,sad"],["😭","sweat_tear","cry","大哭脸","cry,sob"],["😤","sweat_tear","sweat","生气汗","angry,sweat"],["😰","sweat_tear","sweat","焦虑汗","anxious,sweat"],["😨","sweat_tear","sweat","恐惧汗","fear,sweat"],["😧","sweat_tear","sweat","痛苦汗","anguished,sweat"],["|","decoration","border","竖线边框","frame,border"],["｜","decoration","border","全角竖线边框","frame,border"],["—","decoration","border","横线边框","frame,border"],["―","decoration","border","横线边框","frame,border"],["━","decoration","border","粗横线边框","frame,border"],["┃","decoration","border","粗竖线边框","frame,border"],["=","decoration","border","双横线边框","frame,border"],["≡","decoration","border","三横线边框","frame,border"],["#","decoration","border","井号边框","frame,border"],["╔","decoration","border","双线左上角","frame,border"],["╗","decoration","border","双线右上角","frame,border"],["╚","decoration","border","双线左下角","frame,border"],["╝","decoration","border","双线右下角","frame,border"],["║","decoration","border","双线竖线","frame,border"],["═","decoration","border","双线横线","frame,border"],["┌","decoration","border","单线左上角","frame,border"],["┐","decoration","border","单线右上角","frame,border"],["└","decoration","border","单线左下角","frame,border"],["┘","decoration","border","单线右下角","frame,border"],["─","decoration","border","单线横线","frame,border"],["│","decoration","border","单线竖线","frame,border"],["├","decoration","border","左T","frame,border"],["┤","decoration","border","右T","frame,border"],["┬","decoration","border","上T","frame,border"],["┴","decoration","border","下T","frame,border"],["┼","decoration","border","十字","frame,border"],["(","decoration","bracket","左圆括号","frame,bracket"],[")","decoration","bracket","右圆括号","frame,bracket"],["（","decoration","bracket","全角左圆括号","frame,bracket"],["）","decoration","bracket","全角右圆括号","frame,bracket"],["[","decoration","bracket","左方括号","frame,bracket"],["]","decoration","bracket","右方括号","frame,bracket"],["［","decoration","bracket","全角左方括号","frame,bracket"],["］","decoration","bracket","全角右方括号","frame,bracket"],["{","decoration","bracket","左花括号","frame,bracket"],["}","decoration","bracket","右花括号","frame,bracket"],["｛","decoration","bracket","全角左花括号","frame,bracket"],["｝","decoration","bracket","全角右花括号","frame,bracket"],["〈","decoration","bracket","左单书名号","frame,bracket"],["〉","decoration","bracket","右单书名号","frame,bracket"],["《","decoration","bracket","左双书名号","frame,bracket"],["》","decoration","bracket","右双书名号","frame,bracket"],["「","decoration","bracket","日文左角括号","frame,bracket"],["」","decoration","bracket","日文右角括号","frame,bracket"],["『","decoration","bracket","日文左双角括号","frame,bracket"],["』","decoration","bracket","日文右双角括号","frame,bracket"],["【","decoration","bracket","左黑方括号","frame,bracket"],["】","decoration","bracket","右黑方括号","frame,bracket"],["〔","decoration","bracket","左龟壳括号","frame,bracket"],["〕","decoration","bracket","右龟壳括号","frame,bracket"],["〖","decoration","bracket","左空心方括号","frame,bracket"],["〗","decoration","bracket","右空心方括号","frame,bracket"],["★","decoration","star","实心星","sparkle,star"],["☆","decoration","star","空心星","sparkle,star"],["✦","decoration","star","四角星","sparkle,star"],["✧","decoration","star","空心四角星","sparkle,star"],["✪","decoration","star","圆中星","sparkle,star"],["✰","decoration","star","阴影星","sparkle,star"],["✯","decoration","star","漩涡星","sparkle,star"],["✬","decoration","star","圆心星","sparkle,star"],["✩","decoration","star","空心星","sparkle,star"],["✨","decoration","sparkle","闪光","sparkle,shine"],["✲","decoration","star","八角星","sparkle,star"],["✱","decoration","star","重星号","sparkle,star"],["✳","decoration","star","星号运算符","sparkle,star"],["✴","decoration","star","八角星","sparkle,star"],["✵","decoration","star","六角星","sparkle,star"],["✶","decoration","star","六角星","sparkle,star"],["✷","decoration","star","八角星","sparkle,star"],["✸","decoration","star","八角星","sparkle,star"],["✹","decoration","star","八角星","sparkle,star"],["✿","decoration","flower","花朵","cute,flower"],["❀","decoration","flower","花朵","cute,flower"],["❁","decoration","flower","花朵","cute,flower"],["❂","decoration","flower","花朵","cute,flower"],["❃","decoration","flower","花朵","cute,flower"],["❄","decoration","flower","雪花","snow,flower"],["❅","decoration","flower","雪花","snow,flower"],["❆","decoration","flower","雪花","snow,flower"],["❇","decoration","flower","闪光","sparkle,flower"],["❈","decoration","flower","闪光","sparkle,flower"],["♥","decoration","heart","爱心","love,heart"],["♡","decoration","heart","空心爱心","love,heart"],["❤","decoration","heart","爱心","love,heart"],["❥","decoration","heart","爱心","love,heart"],["❣","decoration","heart","爱心感叹","love,heart"],["❦","decoration","heart","花饰爱心","love,heart"],["❧","decoration","heart","花饰爱心","love,heart"],["♪","decoration","music","单音符","music,note"],["♫","decoration","music","双音符","music,note"],["♬","decoration","music","双音符","music,note"],["♩","decoration","music","四分音符","music,note"],["♭","decoration","music","降号","music,flat"],["♮","decoration","music","还原号","music,natural"],["♯","decoration","music","升号","music,sharp"],["◆","decoration","diamond","实心菱形","gem,diamond"],["◇","decoration","diamond","空心菱形","gem,diamond"],["◈","decoration","diamond","菱形","gem,diamond"],["♦","decoration","diamond","实心方块","gem,diamond"],["♢","decoration","diamond","空心方块","gem,diamond"],["●","decoration","circle","实心圆","dot,circle"],["○","decoration","circle","空心圆","dot,circle"],["◯","decoration","circle","大空心圆","dot,circle"],["⊙","decoration","circle","圆中点","dot,circle"],["◐","decoration","circle","左半圆","half,circle"],["◑","decoration","circle","右半圆","half,circle"],["◒","decoration","circle","下半圆","half,circle"],["◓","decoration","circle","上半圆","half,circle"],["▲","decoration","triangle","实心上三角","shape,triangle"],["△","decoration","triangle","空心上三角","shape,triangle"],["▼","decoration","triangle","实心下三角","shape,triangle"],["▽","decoration","triangle","空心下三角","shape,triangle"],["◀","decoration","triangle","实心左三角","shape,triangle"],["◁","decoration","triangle","空心左三角","shape,triangle"],["▶","decoration","triangle","实心右三角","shape,triangle"],["▷","decoration","triangle","空心右三角","shape,triangle"],["■","decoration","square","实心方块","shape,square"],["□","decoration","square","空心方块","shape,square"],["▢","decoration","square","方框","shape,square"],["▣","decoration","square","方框中点","shape,square"],["→","decoration","arrow","右箭头","direction,arrow"],["←","decoration","arrow","左箭头","direction,arrow"],["↑","decoration","arrow","上箭头","direction,arrow"],["↓","decoration","arrow","下箭头","direction,arrow"],["↔","decoration","arrow","左右箭头","direction,arrow"],["↕","decoration","arrow","上下箭头","direction,arrow"],["⇒","decoration","arrow","双线右箭头","direction,arrow"],["⇐","decoration","arrow","双线左箭头","direction,arrow"],["⇑","decoration","arrow","双线上箭头","direction,arrow"],["⇓","decoration","arrow","双线下箭头","direction,arrow"],["➡","decoration","arrow","右箭头","direction,arrow"],["⬅","decoration","arrow","左箭头","direction,arrow"],["⬆","decoration","arrow","上箭头","direction,arrow"],["⬇","decoration","arrow","下箭头","direction,arrow"],["~","decoration","wave","波浪线","line,wave"],["～","decoration","wave","全角波浪线","line,wave"],["〰","decoration","wave","波浪线","line,wave"],["≈","decoration","wave","约等号","line,wave"],["∿","decoration","wave","正弦波","line,wave"],["!","decoration","punctuation","感叹号","exclaim"],["?","decoration","punctuation","问号","question"],["¡","decoration","punctuation","倒感叹号","exclaim"],["¿","decoration","punctuation","倒问号","question"],["‼","decoration","punctuation","双感叹号","exclaim"],["⁇","decoration","punctuation","双问号","question"],["⁈","decoration","punctuation","问叹号","exclaim,question"],["⁉","decoration","punctuation","叹问号","exclaim,question"],["๑","decoration","thai","泰文装饰","cute,thai"],["๛","decoration","thai","泰文结束符","end,thai"],["๚","decoration","thai","泰文装饰","decor,thai"],["๏","decoration","thai","泰文装饰","decor,thai"],["°","decoration","degree","度数符号","small,degree"],["º","decoration","degree","度数符号","small,degree"],["™","decoration","symbol","商标","trademark"],["®","decoration","symbol","注册商标","registered"],["©","decoration","symbol","版权","copyright"],["§","decoration","symbol","章节符","section"],["¶","decoration","symbol","段落符","paragraph"],["†","decoration","symbol","剑号","dagger"],["‡","decoration","symbol","双剑号","dagger"],["•","decoration","bullet","圆点","dot,bullet"],["‣","decoration","bullet","三角圆点","dot,bullet"],["‥","decoration","bullet","双圆点","dot,bullet"],["…","decoration","bullet","省略号","dot,bullet"],["⚑","decoration","flag","实心旗","flag"],["⚐","decoration","flag","空心旗","flag"],["🎌","decoration","flag","交叉旗","flag"],["🏁","decoration","flag","方格旗","flag"],["🚩","decoration","flag","三角旗","flag"],["♔","decoration","crown","白王冠","king,crown"],["♕","decoration","crown","白后冠","queen,crown"],["♚","decoration","crown","黑王冠","king,crown"],["♛","decoration","crown","黑后冠","queen,crown"],["👑","decoration","crown","皇冠","king,crown"],["🔑","decoration","key","钥匙","key"],["🗝","decoration","key","旧钥匙","key"],["🔒","decoration","lock","锁","lock"],["🔓","decoration","lock","开锁","unlock"],["☀","decoration","sun","太阳","sun"],["☁","decoration","cloud","云","cloud"],["☂","decoration","rain","雨伞","rain"],["☃","decoration","snow","雪人","snow"],["☄","decoration","comet","彗星","comet"],["☎","decoration","phone","电话","phone"],["☏","decoration","phone","电话","phone"],["☑","decoration","check","勾选","check"],["✔","decoration","check","勾","check"],["✖","decoration","cross","叉","cross"],["✗","decoration","cross","叉","cross"],["✘","decoration","cross","叉","cross"],["🌑","decoration","moon","新月","moon,new"],["🌒","decoration","moon","蛾眉月","moon,waxing"],["🌓","decoration","moon","上弦月","moon,quarter"],["🌔","decoration","moon","盈凸月","moon,waxing"],["🌕","decoration","moon","满月","moon,full"],["🌖","decoration","moon","亏凸月","moon,waning"],["🌗","decoration","moon","下弦月","moon,quarter"],["🌘","decoration","moon","残月","moon,waning"],["🌙","decoration","moon","弯月","moon,crescent"],["🌚","decoration","moon","新月脸","moon,face"],["🌝","decoration","moon","满月脸","moon,face"],["ʕ","animal_ears","bear","熊耳左","bear,ears"],["ʔ","animal_ears","bear","熊耳右","bear,ears"],["༼","animal_ears","bear","藏文熊耳左","bear,ears"],["༽","animal_ears","bear","藏文熊耳右","bear,ears"],["ฅ","animal_ears","cat","猫爪","cat,paws"],["ω","animal_ears","cat","猫嘴","cat,mouth"],["3","animal_ears","cat","猫嘴3","cat,mouth"],["Ƹ̵̡Ӝ̵̨̄Ʒ","animal_ears","butterfly","蝴蝶翅膀","butterfly,wings"],["ƸӜƷ","animal_ears","butterfly","蝴蝶翅膀","butterfly,wings"],["ζ°)))ﾟ","animal_ears","bee","蜜蜂","bee"],["✧","magic","sparkle","魔法闪光","magic,sparkle"],["✦","magic","sparkle","魔法闪光","magic,sparkle"],["✨","magic","sparkle","魔法闪光","magic,sparkle"],["⋆","magic","sparkle","魔法星","magic,sparkle"],["˚","magic","sparkle","魔法小圈","magic,sparkle"],["✺","magic","sparkle","魔法星","magic,sparkle"],["∞","magic","infinity","无限","magic,infinity"],["∴","magic","therefore","所以","magic,logic"],["∵","magic","because","因为","magic,logic"],["∿","magic","wave","魔法波","magic,wave"],["〜","magic","wave","魔法波","magic,wave"],["🌀","magic","cyclone","漩涡","magic,cyclone"],["💫","magic","dizzy","晕眩","magic,dizzy"],["⭐","magic","star","星星","magic,star"],["🌟","magic","star","闪亮星","magic,star"],["⚡","magic","lightning","闪电","magic,lightning"],["🔥","magic","fire","火焰","magic,fire"],["❄","magic","snow","雪花","magic,snow"],["☃","magic","snowman","雪人","magic,snowman"],["⛄","magic","snowman","雪人","magic,snowman"],["✩","magic","sparkle","魔法闪光","magic,sparkle"],["✪","magic","sparkle","魔法闪光","magic,sparkle"],["✫","magic","sparkle","魔法闪光","magic,sparkle"],["✬","magic","sparkle","魔法闪光","magic,sparkle"],["✭","magic","sparkle","魔法闪光","magic,sparkle"],["✮","magic","sparkle","魔法闪光","magic,sparkle"],["✯","magic","sparkle","魔法闪光","magic,sparkle"],["✰","magic","sparkle","魔法闪光","magic,sparkle"],["👑","headwear","crown","皇冠","king,crown"],["👒","headwear","hat","女帽","hat,woman"],["🎩","headwear","hat","礼帽","hat,top"],["🎓","headwear","hat","学士帽","graduate,hat"],["⛑","headwear","helmet","救援头盔","helmet,rescue"],["🪖","headwear","helmet","军盔","military,helmet"],["📿","headwear","beads","念珠","beads,necklace"],["💄","headwear","lipstick","口红","makeup,lipstick"],["💍","headwear","ring","戒指","jewelry,ring"],["💎","headwear","gem","宝石","jewelry,gem"],["🎅","headwear","santa","圣诞老人","christmas,santa"],["♖","headwear","castle","白车","chess,castle"],["♗","headwear","bishop","白象","chess,bishop"],["♘","headwear","knight","白马","chess,knight"],["♙","headwear","pawn","白兵","chess,pawn"],["♜","headwear","castle","黑车","chess,castle"],["♝","headwear","bishop","黑象","chess,bishop"],["♞","headwear","knight","黑马","chess,knight"],["♟","headwear","pawn","黑兵","chess,pawn"],["☕","props","drink","咖啡","coffee,drink"],["🍵","props","drink","茶","tea,drink"],["🍺","props","drink","啤酒","beer,drink"],["🍻","props","drink","干杯","beer,drink"],["🍷","props","drink","红酒","wine,drink"],["🥂","props","drink","香槟","champagne,drink"],["🥃","props","drink","威士忌","whiskey,drink"],["🥤","props","drink","汽水","soda,drink"],["🧃","props","drink","果汁","juice,drink"],["🍦","props","food","冰淇淋","icecream,food"],["🍨","props","food","冰淇淋","icecream,food"],["🍩","props","food","甜甜圈","donut,food"],["🍪","props","food","饼干","cookie,food"],["🎂","props","food","生日蛋糕","cake,food,birthday"],["🍰","props","food","蛋糕","cake,food"],["🧁","props","food","纸杯蛋糕","cupcake,food"],["🥧","props","food","派","pie,food"],["🍫","props","food","巧克力","chocolate,food"],["🍬","props","food","糖果","candy,food"],["🍭","props","food","棒棒糖","lollipop,food"],["🍮","props","food","布丁","pudding,food"],["🍯","props","food","蜂蜜","honey,food"],["🍎","props","fruit","苹果","apple,fruit"],["🍏","props","fruit","青苹果","apple,fruit,green"],["🍐","props","fruit","梨","pear,fruit"],["🍊","props","fruit","橘子","orange,fruit"],["🍋","props","fruit","柠檬","lemon,fruit"],["🍌","props","fruit","香蕉","banana,fruit"],["🍉","props","fruit","西瓜","watermelon,fruit"],["🍇","props","fruit","葡萄","grape,fruit"],["🍓","props","fruit","草莓","strawberry,fruit"],["🍈","props","fruit","甜瓜","melon,fruit"],["🍒","props","fruit","樱桃","cherry,fruit"],["🍑","props","fruit","桃子","peach,fruit"],["🥭","props","fruit","芒果","mango,fruit"],["🍍","props","fruit","菠萝","pineapple,fruit"],["🥥","props","fruit","椰子","coconut,fruit"],["🥝","props","fruit","猕猴桃","kiwi,fruit"],["🍅","props","fruit","番茄","tomato,fruit"],["🌸","props","flower","樱花","sakura,flower"],["💮","props","flower","白花","flower,white"],["🌺","props","flower","木槿","hibiscus,flower"],["🌻","props","flower","向日葵","sunflower,flower"],["🌼","props","flower","雏菊","daisy,flower"],["🌷","props","flower","郁金香","tulip,flower"],["🌹","props","flower","玫瑰","rose,flower"],["🥀","props","flower","枯萎的花","wilted,flower"],["💐","props","flower","花束","bouquet,flower"],["🌱","props","plant","幼苗","sprout,plant"],["🌲","props","plant","松树","tree,plant"],["🌳","props","plant","落叶树","tree,plant"],["🌴","props","plant","棕榈树","palm,plant"],["🌵","props","plant","仙人掌","cactus,plant"],["🌾","props","plant","稻穗","rice,plant"],["🌿","props","plant","草药","herb,plant"],["☘","props","plant","三叶草","shamrock,plant"],["🍀","props","plant","四叶草","clover,plant,luck"],["🍁","props","plant","枫叶","maple,plant"],["🍂","props","plant","落叶","leaf,plant,fall"],["🍃","props","plant","叶子","leaf,plant"],["⚔","props","weapon","交叉剑","sword,weapon"],["🗡","props","weapon","匕首","dagger,weapon"],["🔫","props","weapon","手枪","gun,weapon"],["🏹","props","weapon","弓箭","bow,weapon"],["🛡","props","weapon","盾牌","shield,weapon"],["🪓","props","weapon","斧头","axe,weapon"],["🔨","props","tool","锤子","hammer,tool"],["🪛","props","tool","螺丝刀","screwdriver,tool"],["🔧","props","tool","扳手","wrench,tool"],["🔩","props","tool","螺母","nut,tool"],["⚙","props","tool","齿轮","gear,tool"],["🧰","props","tool","工具箱","toolbox,tool"],["🎸","props","instrument","吉他","guitar,music"],["🎹","props","instrument","钢琴","piano,music"],["🎺","props","instrument","小号","trumpet,music"],["🎻","props","instrument","小提琴","violin,music"],["🥁","props","instrument","鼓","drum,music"],["🎷","props","instrument","萨克斯","sax,music"],["🪕","props","instrument","班卓琴","banjo,music"],["🪗","props","instrument","手风琴","accordion,music"],["⚽","props","ball","足球","soccer,ball"],["🏀","props","ball","篮球","basketball,ball"],["🏈","props","ball","橄榄球","football,ball"],["⚾","props","ball","棒球","baseball,ball"],["🥎","props","ball","垒球","softball,ball"],["🎾","props","ball","网球","tennis,ball"],["🏐","props","ball","排球","volleyball,ball"],["🏉","props","ball","橄榄球","rugby,ball"],["🥏","props","ball","飞盘","frisbee,ball"],["🎱","props","ball","台球","pool,ball"],["🏓","props","ball","乒乓球","pingpong,ball"],["🏸","props","ball","羽毛球","badminton,ball"],["🎁","props","gift","礼物","gift,present"],["🎈","props","toy","气球","balloon,party"],["🎉","props","party","派对","party,celebrate"],["🎊","props","party","彩球","party,celebrate"],["🎀","props","decoration","蝴蝶结","ribbon,decoration"],["🎗","props","decoration","纪念丝带","ribbon,reminder"],["🎟","props","ticket","入场券","ticket,admission"],["🎫","props","ticket","票","ticket"],["💡","props","light","灯泡","idea,light"],["🔦","props","light","手电筒","flashlight,light"],["🏮","props","light","灯笼","lantern,light"],["🪔","props","light","油灯","lamp,light"],["⏰","props","clock","闹钟","alarm,clock"],["⏱","props","clock","秒表","stopwatch,clock"],["⏲","props","clock","计时器","timer,clock"],["🕰","props","clock","座钟","mantel,clock"],["📚","props","book","书堆","books,study"],["📖","props","book","翻开的书","book,read"],["📒","props","book","笔记本","notebook,write"],["📓","props","book","笔记本","notebook,write"],["📔","props","book","装饰笔记本","notebook,write"],["📕","props","book","红书","book,red"],["📗","props","book","绿书","book,green"],["📘","props","book","蓝书","book,blue"],["📙","props","book","橙书","book,orange"],["✉","props","mail","信封","envelope,mail"],["📩","props","mail","来信","envelope,mail"],["📨","props","mail","来信","envelope,mail"],["📧","props","mail","电子邮件","email,mail"],["💌","props","mail","情书","love,mail,letter"],["📝","props","write","备忘录","memo,write"],["✏","props","write","铅笔","pencil,write"],["✒","props","write","钢笔","pen,write"],["🖋","props","write","钢笔","pen,write"],["🖊","props","write","笔","pen,write"],["🖌","props","write","画笔","brush,write"],["🖍","props","write","蜡笔","crayon,write"],["💰","props","money","钱袋","money,bag"],["💴","props","money","日元","yen,money"],["💵","props","money","美元","dollar,money"],["💶","props","money","欧元","euro,money"],["💷","props","money","英镑","pound,money"],["💸","props","money","飞钱","money,fly"],["💳","props","money","信用卡","card,credit"],["🧾","props","money","收据","receipt,money"],["❤","props","heart","红心","love,heart"],["🧡","props","heart","橙心","love,heart,orange"],["💛","props","heart","黄心","love,heart,yellow"],["💚","props","heart","绿心","love,heart,green"],["💙","props","heart","蓝心","love,heart,blue"],["💜","props","heart","紫心","love,heart,purple"],["🖤","props","heart","黑心","love,heart,black"],["🤍","props","heart","白心","love,heart,white"],["🤎","props","heart","棕心","love,heart,brown"],["💔","props","heart","碎心","broken,heart,sad"],["💕","props","heart","双心","love,heart"],["💞","props","heart","旋转心","love,heart"],["💓","props","heart","跳动心","love,heart"],["💗","props","heart","成长心","love,heart"],["💖","props","heart","闪亮心","love,heart,sparkle"],["💘","props","heart","爱神之箭","love,heart,arrow"],["💝","props","heart","爱心礼物","love,heart,gift"],["💟","props","heart","心形装饰","love,heart"],["♥","props","heart","黑桃心","love,heart"],["♡","props","heart","空心心","love,heart"],["😀","props","emoji","笑脸","happy,smile"],["😃","props","emoji","大笑","happy,smile"],["😄","props","emoji","开心","happy,smile"],["😁","props","emoji","露齿笑","happy,grin"],["😆","props","emoji","眯眼笑","laugh,squint"],["😅","props","emoji","汗笑","sweat,laugh"],["🤣","props","emoji","笑倒","laugh,rofl"],["😂","props","emoji","笑哭","laugh,tear"],["🙂","props","emoji","微笑","smile,subtle"],["🙃","props","emoji","倒脸","sarcasm,upside"],["😉","props","emoji","眨眼","wink,flirt"],["😊","props","emoji","脸红笑","blush,smile"],["😇","props","emoji","天使","angel,halo"],["🥲","props","emoji","含泪笑","tear,smile"],["☺","props","emoji","脸红","blush,smile"],["😋","props","emoji","美味","yummy,tongue"],["😛","props","emoji","吐舌","tongue,playful"],["😜","props","emoji","眨眼吐舌","wink,tongue"],["🤪","props","emoji","疯狂","crazy,zany"],["😝","props","emoji","眯眼吐舌","tongue,squint"],["🤑","props","emoji","钱眼","money,greedy"],["🤗","props","emoji","拥抱","hug,warm"],["🤭","props","emoji","捂嘴笑","giggle,hand"],["🤫","props","emoji","嘘","shh,quiet"],["🤔","props","emoji","思考","think,ponder"],["🤐","props","emoji","拉链嘴","zip,quiet"],["🤨","props","emoji","怀疑","skeptic,raised"],["😐","props","emoji","中性","neutral,flat"],["😑","props","emoji","无表情","expressionless,flat"],["😶","props","emoji","无嘴","mute,no_mouth"],["😏","props","emoji","得意","smirk,smug"],["😒","props","emoji","不爽","unamused,annoyed"],["🙄","props","emoji","翻白眼","roll,annoyed"],["😬","props","emoji","尴尬","grimace,awkward"],["🤥","props","emoji","说谎","lie,pinocchio"],["😌","props","emoji","释然","relieved,peace"],["😔","props","emoji","沉思","sad,pensive"],["😪","props","emoji","困","sleepy,tired"],["🤤","props","emoji","流口水","drool,sleepy"],["😴","props","emoji","睡觉","sleep,zzz"],["😷","props","emoji","口罩","mask,sick"],["🤒","props","emoji","生病","sick,thermometer"],["🤕","props","emoji","受伤","hurt,bandage"],["🤢","props","emoji","恶心","nausea,sick"],["🤮","props","emoji","呕吐","vomit,sick"],["🤧","props","emoji","打喷嚏","sneeze,sick"],["🥵","props","emoji","热","hot,sweat"],["🥶","props","emoji","冷","cold,freeze"],["🥴","props","emoji","醉","woozy,drunk"],["😵","props","emoji","晕","dizzy,knockout"],["🤯","props","emoji","爆炸","explode,mind_blown"],["🤠","props","emoji","牛仔","cowboy,hat"],["🥳","props","emoji","派对","party,celebrate"],["🥸","props","emoji","伪装","disguise,glasses"],["😎","props","emoji","酷","cool,sunglasses"],["🤓","props","emoji","书呆","nerd,glasses"],["🧐","props","emoji","单片眼镜","monocle,inspect"],["😕","props","emoji","困惑","confused"],["😟","props","emoji","担心","worried,sad"],["🙁","props","emoji","皱眉","frown,sad"],["☹","props","emoji","皱眉","frown,sad"],["😮","props","emoji","惊讶","surprised,open"],["😯","props","emoji","惊讶","surprised,hushed"],["😲","props","emoji","震惊","astonished,surprised"],["😳","props","emoji","脸红","flushed,embarrassed"],["🥺","props","emoji","恳求","plead,beg"],["😦","props","emoji","张嘴皱眉","frown,open"],["😧","props","emoji","痛苦","anguished,distress"],["😨","props","emoji","恐惧","fear,scared"],["😰","props","emoji","焦虑","anxious,sweat"],["😥","props","emoji","失望但释然","sad,relief"],["😢","props","emoji","哭","cry,tear"],["😭","props","emoji","大哭","sob,cry,loud"],["😱","props","emoji","尖叫","scream,fear"],["😖","props","emoji","困扰","confounded,distress"],["😣","props","emoji","忍耐","persevere,distress"],["😞","props","emoji","失望","disappointed,sad"],["😓","props","emoji","汗","sweat,sad"],["😩","props","emoji","疲惫","weary,tired"],["😫","props","emoji","累","tired,distress"],["🥱","props","emoji","打哈欠","yawn,tired"],["😤","props","emoji","得意怒","triumph,angry"],["😡","props","emoji","怒","rage,angry"],["😠","props","emoji","生气","angry"],["🤬","props","emoji","咒骂","swear,curse"],["😈","props","emoji","笑恶魔","devil,smile"],["👿","props","emoji","怒恶魔","devil,angry"],["💀","props","emoji","骷髅","skull,dead"],["☠","props","emoji","骷髅交叉骨","skull,crossbones"],["💩","props","emoji","大便","poop,funny"],["🤡","props","emoji","小丑","clown,scary"],["👹","props","emoji","食人魔","ogre,monster"],["👺","props","emoji","天狗","goblin,monster"],["👻","props","emoji","鬼","ghost,spooky"],["👽","props","emoji","外星人","alien,ufo"],["👾","props","emoji","外星怪","alien,game"],["🤖","props","emoji","机器人","robot,ai"],["😺","props","emoji","猫笑","cat,smile"],["😸","props","emoji","猫笑眼","cat,smile"],["😹","props","emoji","猫笑哭","cat,tear"],["😻","props","emoji","猫爱心眼","cat,love"],["😼","props","emoji","猫得意","cat,smirk"],["😽","props","emoji","猫亲吻","cat,kiss"],["🙀","props","emoji","猫尖叫","cat,scream"],["😿","props","emoji","猫哭","cat,cry"],["😾","props","emoji","猫不爽","cat,pout"],["🙈","props","emoji","不看","monkey,see_no_evil"],["🙉","props","emoji","不听","monkey,hear_no_evil"],["🙊","props","emoji","不说","monkey,speak_no_evil"],["💢","props","symbol","怒气","anger,vein"],["💥","props","symbol","爆炸","boom,explosion"],["💫","props","symbol","晕","dizzy,star"],["💦","props","symbol","汗溅","sweat,splash"],["💨","props","symbol","冲刺","dash,speed"],["🕳","props","symbol","洞","hole"],["💬","props","symbol","对话","speech,talk"],["💭","props","symbol","思考","thought,think"],["💤","props","symbol","睡觉","sleep,zzz"],["♨","props","weather","温泉","hot_spring,steam"],["🌌","props","weather","银河","milky_way,space"],["🌅","props","weather","日出","sunrise"],["🌄","props","weather","山日出","sunrise,mountain"],["🌠","props","weather","流星","stars,shooting"],["🎇","props","weather","烟花棒","sparkler,firework"],["🎆","props","weather","烟花","firework,celebrate"],["🌈","props","weather","彩虹","rainbow"],["🏳","props","flag","白旗","white,flag"],["🏴","props","flag","黑旗","black,flag"],["🏳‍🌈","props","flag","彩虹旗","rainbow,flag"],["🏴‍☠","props","flag","海盗旗","pirate,flag"],["∞","symbols","math","无限","infinity,math"],["∴","symbols","math","所以","therefore,math"],["∵","symbols","math","因为","because,math"],["≠","symbols","math","不等","not_equal,math"],["≈","symbols","math","约等","approx,math"],["≡","symbols","math","恒等","identical,math"],["≤","symbols","math","小于等于","leq,math"],["≥","symbols","math","大于等于","geq,math"],["±","symbols","math","正负","plus_minus,math"],["×","symbols","math","乘","multiply,math"],["÷","symbols","math","除","divide,math"],["√","symbols","math","根号","sqrt,math"],["∑","symbols","math","求和","sum,math"],["∏","symbols","math","求积","product,math"],["∫","symbols","math","积分","integral,math"],["∂","symbols","math","偏导","partial,math"],["∇","symbols","math","梯度","nabla,math"],["π","symbols","math","圆周率","pi,math"],["Σ","symbols","math","西格玛","sigma,math"],["Ω","symbols","math","欧姆","omega,math"],["α","symbols","math","阿尔法","alpha,math"],["β","symbols","math","贝塔","beta,math"],["γ","symbols","math","伽马","gamma,math"],["δ","symbols","math","德尔塔","delta,math"],["θ","symbols","math","西塔","theta,math"],["λ","symbols","math","拉姆达","lambda,math"],["μ","symbols","math","缪","mu,math"],["φ","symbols","math","斐","phi,math"],["ψ","symbols","math","普西","psi,math"],["$","symbols","currency","美元","dollar,money"],["€","symbols","currency","欧元","euro,money"],["£","symbols","currency","英镑","pound,money"],["¥","symbols","currency","日元","yen,money"],["₩","symbols","currency","韩元","won,money"],["₽","symbols","currency","卢布","ruble,money"],["₹","symbols","currency","卢比","rupee,money"],["₺","symbols","currency","里拉","lira,money"],["฿","symbols","currency","泰铢","baht,money"],["¢","symbols","currency","分","cent,money"],["℃","symbols","unit","摄氏度","celsius,temperature"],["℉","symbols","unit","华氏度","fahrenheit,temperature"],["‰","symbols","unit","千分号","permille,unit"],["♂","symbols","gender","男","male,gender"],["♀","symbols","gender","女","female,gender"],["⚥","symbols","gender","双性","both,gender"],["⚧","symbols","gender","跨性别","transgender,gender"],["⚕","symbols","medical","医疗杖","medical,staff"],["☤","symbols","medical","双蛇杖","medical,caduceus"],["✚","symbols","medical","十字","medical,cross"],["✝","symbols","religious","拉丁十字","religious,cross"],["✞","symbols","religious","十字","religious,cross"],["✟","symbols","religious","十字","religious,cross"],["✠","symbols","religious","马尔他十字","religious,cross"],["✡","symbols","religious","大卫之星","religious,star"],["☪","symbols","religious","星月","religious,star,crescent"],["☯","symbols","religious","太极","religious,yin_yang"],["☸","symbols","religious","法轮","religious,dharma"],["🕉","symbols","religious","唵","religious,om"],["♈","symbols","zodiac","白羊","aries,zodiac"],["♉","symbols","zodiac","金牛","taurus,zodiac"],["♊","symbols","zodiac","双子","gemini,zodiac"],["♋","symbols","zodiac","巨蟹","cancer,zodiac"],["♌","symbols","zodiac","狮子","leo,zodiac"],["♍","symbols","zodiac","处女","virgo,zodiac"],["♎","symbols","zodiac","天秤","libra,zodiac"],["♏","symbols","zodiac","天蝎","scorpio,zodiac"],["♐","symbols","zodiac","射手","sagittarius,zodiac"],["♑","symbols","zodiac","摩羯","capricorn,zodiac"],["♒","symbols","zodiac","水瓶","aquarius,zodiac"],["♓","symbols","zodiac","双鱼","pisces,zodiac"],["♠","symbols","cards","黑桃","spade,cards"],["♥","symbols","cards","红心","heart,cards"],["♦","symbols","cards","方块","diamond,cards"],["♣","symbols","cards","梅花","club,cards"],["♤","symbols","cards","空心黑桃","spade,cards"],["♡","symbols","cards","空心红心","heart,cards"],["♢","symbols","cards","空心方块","diamond,cards"],["♧","symbols","cards","空心梅花","club,cards"],["♻","symbols","misc","回收","recycle,eco"],["⚛","symbols","misc","原子","atom,science"],["⚜","symbols","misc","百合花饰","fleur,decoration"],["✈","symbols","misc","飞机","plane,travel"],["✓","symbols","misc","勾","check,ok"],["✔","symbols","misc","粗勾","check,ok"],["✕","symbols","misc","叉","cross,no"],["✖","symbols","misc","粗叉","cross,no"],["✗","symbols","misc","叉","cross,no"],["✘","symbols","misc","粗叉","cross,no"]];   // [char, part, subpart, desc, tags]
+const KM = [["(◕‿◕)","happy","cute","happy,cute,smile","可爱微笑",{"left_eye":"(","right_eye":")","mouth":"◕‿◕"}],["(✿◠‿◠)","happy","cute","happy,cute,flower","花朵可爱笑",{"left_eye":"(","right_eye":")","mouth":"◠‿◠","decoration":"✿"}],["(｡♥‿♥｡)","happy","love","happy,love,heart","爱心笑",{"left_eye":"(","right_eye":")","mouth":"♥‿♥"}],["(◡‿◡)","happy","cute","happy,cute,smile","可爱微笑",{"left_eye":"(","right_eye":")","mouth":"◡‿◡"}],["(´｡• ᵕ •｡`)","happy","cute","happy,cute,blush","脸红可爱笑",{"left_eye":"(","right_eye":")","mouth":"｡• ᵕ •｡"}],["(⌒‿⌒)","happy","cute","happy,cute,smile","弧形笑",{"left_eye":"(","right_eye":")","mouth":"⌒‿⌒"}],["(◕ᴗ◕✿)","happy","cute","happy,cute,flower","花朵笑",{"left_eye":"(","right_eye":")","mouth":"ᴗ","decoration":"✿"}],["(❀╹◡╹)","happy","cute","happy,cute,flower","花朵笑",{"left_eye":"(","right_eye":")","mouth":"◡╹","decoration":"❀"}],["(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧","happy","magic","happy,magic,sparkle","魔法闪光",{"left_eye":"(","right_eye":")","mouth":"ヮ","decoration":"*:･ﾟ✧"}],["ヽ(>∀<☆)ノ","happy","excited","happy,excited,star","兴奋星眼",{"left_eye":"(","right_eye":")","mouth":"∀","decoration":"☆"}],["(ノ^∇^)","happy","wave","happy,wave,cheer","挥手开心",{"left_eye":"(","right_eye":")","mouth":"^∇^"}],["(ﾉ◕ヮ◕)ﾉ*:・゚✧","happy","magic","happy,magic,sparkle","魔法闪光",{"left_eye":"(","right_eye":")","mouth":"ヮ","decoration":"*:・゚✧"}],["(｡◕‿◕｡)","happy","cute","happy,cute,smile","可爱笑",{"left_eye":"(","right_eye":")","mouth":"◕‿◕"}],["(✿╹◡╹)","happy","cute","happy,cute,flower","花朵笑",{"left_eye":"(","right_eye":")","mouth":"◡╹","decoration":"✿"}],["(◠‿◠✿)","happy","cute","happy,cute,flower","花朵笑",{"left_eye":"(","right_eye":")","mouth":"◠‿◠","decoration":"✿"}],["(❁´◡`❁)","happy","cute","happy,cute,flower","花朵笑",{"left_eye":"(","right_eye":")","mouth":"´◡`","decoration":"❁"}],["(✧ω✧)","happy","cute","happy,cute,sparkle","闪光可爱笑",{"left_eye":"(","right_eye":")","mouth":"ω","decoration":"✧"}],["(o^▽^o)","happy","cute","happy,cute,smile","可爱笑",{"left_eye":"(","right_eye":")","mouth":"^▽^"}],["(≧◡≦)","happy","excited","happy,excited,smile","兴奋笑",{"left_eye":"(","right_eye":")","mouth":"◡≦"}],["(✿ ♡‿♡)","happy","love","happy,love,heart,flower","花朵爱心笑",{"left_eye":"(","right_eye":")","mouth":"♡‿♡","decoration":"✿"}],["(´∀｀)♡","happy","love","happy,love,heart","爱心笑",{"left_eye":"(","right_eye":")","mouth":"∀","decoration":"♡"}],["(♥ω♥*)","happy","love","happy,love,heart","爱心笑",{"left_eye":"(","right_eye":")","mouth":"ω","decoration":"♥"}],["(❤ω❤)","happy","love","happy,love,heart","爱心笑",{"left_eye":"(","right_eye":")","mouth":"ω","decoration":"❤"}],["(♡˙︶˙♡)","happy","love","happy,love,heart","爱心笑",{"left_eye":"(","right_eye":")","mouth":"˙︶˙","decoration":"♡"}],["(´• ω •`)","happy","cute","happy,cute,smile","可爱笑",{"left_eye":"(","right_eye":")","mouth":"• ω •"}],["(´｡• ω •｡`)","happy","cute","happy,cute,blush","脸红可爱笑",{"left_eye":"(","right_eye":")","mouth":"｡• ω •｡"}],["(￣ω￣)","happy","relaxed","happy,relaxed,content","满足笑",{"left_eye":"(","right_eye":")","mouth":"ω"}],["(´ω`)","happy","relaxed","happy,relaxed","放松笑",{"left_eye":"(","right_eye":")","mouth":"ω"}],["(^-^)","happy","smile","happy,smile","微笑",{"left_eye":"(","right_eye":")","mouth":"^-^"}],["(^▽^)","happy","smile","happy,smile","大笑",{"left_eye":"(","right_eye":")","mouth":"^▽^"}],["(^o^)","happy","smile","happy,smile","笑",{"left_eye":"(","right_eye":")","mouth":"^o^"}],["(^_^)","happy","smile","happy,smile","微笑",{"left_eye":"(","right_eye":")","mouth":"^_^"}],["(^_^)b","happy","thumbs_up","happy,thumbs_up,ok","点赞",{"left_eye":"(","right_eye":")","mouth":"^_^","hand":"b"}],["(^^)/","happy","wave","happy,wave","挥手",{"left_eye":"(","right_eye":")","mouth":"^^","hand":"/"}],["(^^)v","happy","peace","happy,peace,victory","剪刀手",{"left_eye":"(","right_eye":")","mouth":"^^","hand":"v"}],["(^^)y","happy","peace","happy,peace","剪刀手",{"left_eye":"(","right_eye":")","mouth":"^^","hand":"y"}],["(=^･ω･^=)","happy","cat","happy,cat,ears","猫耳笑",{"left_eye":"(","right_eye":")","mouth":"ω","decoration":"=^･^="}],["(=^･ｪ･^=)","happy","cat","happy,cat,ears","猫耳笑",{"left_eye":"(","right_eye":")","mouth":"ｪ","decoration":"=^･^="}],["(^•ω•^)","happy","cat","happy,cat,ears","猫耳笑",{"left_eye":"(","right_eye":")","mouth":"ω","decoration":"^•^"}],["ฅ(• ɪ •)ฅ","happy","cat","happy,cat,paws","猫爪",{"left_eye":"(","right_eye":")","mouth":"ɪ","decoration":"ฅ"}],["ฅ^•ﻌ•^ฅ","happy","cat","happy,cat,paws","猫爪",{"left_eye":"(","right_eye":")","mouth":"ﻌ","decoration":"ฅ^•^"}],["(◕(‘ 人 ‘) ◕)","happy","fox","happy,fox","狐狸",{"left_eye":"(","right_eye":")","mouth":"人"}],["(´ε｀ )","happy","kiss","happy,kiss,love","亲吻",{"left_eye":"(","right_eye":")","mouth":"ε"}],["( *・ω・)つ","happy","hug","happy,hug","拥抱",{"left_eye":"(","right_eye":")","mouth":"ω","hand":"つ"}],["(つ✧ω✧)つ","happy","hug","happy,hug,sparkle","闪光拥抱",{"left_eye":"(","right_eye":")","mouth":"ω","hand":"つ","decoration":"✧"}],["(っ´▽`)っ","happy","hug","happy,hug","拥抱",{"left_eye":"(","right_eye":")","mouth":"´▽`","hand":"っ"}],["(っ˘̩╭╮˘̩)っ","sad","hug","sad,hug","拥抱",{"left_eye":"(","right_eye":")","mouth":"˘̩","hand":"っ"}],["⊂(◉‿◉)つ","happy","hug","happy,hug","拥抱",{"left_eye":"(","right_eye":")","mouth":"‿","hand":"⊂つ"}],["⊂(･ω･*⊂)","happy","hug","happy,hug","拥抱",{"left_eye":"(","right_eye":")","mouth":"ω","hand":"⊂⊂"}],["⊂(´・ω・`)⊂","shy","hug","shy,hug","害羞拥抱",{"left_eye":"(","right_eye":")","mouth":"ω","hand":"⊂⊂"}],["(´・ω・)っ由","happy","give","happy,give","给",{"left_eye":"(","right_eye":")","mouth":"ω","hand":"っ","item":"由"}],["( •̀ω•́ )σ","playful","poke","playful,poke","戳",{"left_eye":"(","right_eye":")","mouth":"ω","hand":"σ"}],["( •_•)>⌐■-■","cool","cool","cool,sunglasses","戴墨镜",{"left_eye":"(","right_eye":")","mouth":"_","item":"⌐■-■"}],["(⌐■_■)","cool","cool","cool,sunglasses","酷",{"left_eye":"(","right_eye":")","mouth":"■_■"}],["(☞ﾟヮﾟ)☞","cool","point","cool,point","指",{"left_eye":"(","right_eye":")","mouth":"ヮ","hand":"☞"}],["☜(ﾟヮﾟ☜)","cool","point","cool,point","指",{"left_eye":"(","right_eye":")","mouth":"ヮ","hand":"☜"}],["(☞ﾟ∀ﾟ)☞","playful","point","playful,point","指",{"left_eye":"(","right_eye":")","mouth":"∀","hand":"☞"}],["☜(ﾟ∀ﾟ☜)","playful","point","playful,point","指",{"left_eye":"(","right_eye":")","mouth":"∀","hand":"☜"}],["ヽ(´▽`)/","happy","cheer","happy,cheer","欢呼",{"left_eye":"(","right_eye":")","mouth":"´▽`","hand":"ヽ/"}],["ヽ(○´∀`)ﾉ♪","happy","dance","happy,dance,music","跳舞",{"left_eye":"(","right_eye":")","mouth":"´∀`","hand":"ヽﾉ","decoration":"♪"}],["ヾ(⌐■_■)ノ♪","cool","dance","cool,dance,music","酷舞",{"left_eye":"(","right_eye":")","mouth":"■_■","hand":"ヾノ","decoration":"♪"}],["┐('～`;)┌","helpless","shrug","helpless,shrug","耸肩",{"left_eye":"(","right_eye":")","mouth":"～`","hand":"┐┌"}],["¯\\_(ツ)_/¯","helpless","shrug","helpless,shrug","耸肩",{"left_eye":"(","right_eye":")","mouth":"_","hand":"¯\\_ _/¯"}],["╮(╯▽╰)╭","helpless","shrug","helpless,shrug","耸肩",{"left_eye":"(","right_eye":")","mouth":"▽","hand":"╮╭"}],["╮(─▽─)╭","helpless","shrug","helpless,shrug","耸肩",{"left_eye":"(","right_eye":")","mouth":"▽","hand":"╮╭"}],["┐(￣ー￣)┌","helpless","shrug","helpless,shrug","耸肩",{"left_eye":"(","right_eye":")","mouth":"￣","hand":"┐┌"}],["(•̀ᴗ•́)و ̑̑","encourage","cheer","encourage,cheer","加油",{"left_eye":"(","right_eye":")","mouth":"ᴗ","hand":"و ̑̑"}],["(ง •_•)ง","fight","fight","fight,fist","战斗",{"left_eye":"(","right_eye":")","mouth":"_","hand":"งง"}],["(ง'̀-'́)ง","fight","fight","fight,fist","战斗",{"left_eye":"(","right_eye":")","mouth":"-","hand":"งง"}],["(งツ)ว","fight","fight","fight,fist","战斗",{"left_eye":"(","right_eye":")","mouth":"ツ","hand":"งว"}],["(ง ͡° ͜ʖ ͡°)ง","playful","fight","playful,fight,lenny","战斗",{"left_eye":"(","right_eye":")","mouth":"͜ʖ","hand":"งง"}],["ヽ(￣д￣;)ノ","nervous","wave","nervous,wave","紧张挥手",{"left_eye":"(","right_eye":")","mouth":"д","hand":"ヽノ"}],["ヽ(；▽；)ノ","cry","wave","cry,wave","哭挥",{"left_eye":"(","right_eye":")","mouth":"▽","hand":"ヽノ"}],["(づ￣ 3￣)づ","love","hug","love,hug,kiss","拥抱亲吻",{"left_eye":"(","right_eye":")","mouth":"3","hand":"づづ"}],["(づ￣ ³￣)づ","love","hug","love,hug,kiss","拥抱亲吻",{"left_eye":"(","right_eye":")","mouth":"³","hand":"づづ"}],["(ノ°∀°)ノ⌒・*:・。✧","magic","throw","magic,throw,sparkle","扔闪光",{"left_eye":"(","right_eye":")","mouth":"∀","hand":"ノ","decoration":"⌒・*:・。✧"}],["(ノ^o^)ノ","happy","wave","happy,wave","挥手",{"left_eye":"(","right_eye":")","mouth":"^o^","hand":"ノ"}],["(ﾉ´ヮ`)ﾉ*: ・゚✧","magic","magic","magic,sparkle","施法",{"left_eye":"(","right_eye":")","mouth":"ヮ","hand":"ﾉ","decoration":"*: ・゚✧"}],["(*^▽^*)","happy","blush","happy,blush,smile","脸红笑",{"left_eye":"(","right_eye":")","mouth":"^▽^","decoration":"*"}],["(*^ω^*)","happy","blush","happy,blush,smile","脸红笑",{"left_eye":"(","right_eye":")","mouth":"ω","decoration":"*"}],["(*´ω`*)","happy","blush","happy,blush,smile","脸红笑",{"left_eye":"(","right_eye":")","mouth":"ω","decoration":"*"}],["(*´∇｀*)","happy","blush","happy,blush,smile","脸红笑",{"left_eye":"(","right_eye":")","mouth":"∇","decoration":"*"}],["(*≧ω≦*)","happy","blush","happy,blush,excited","兴奋脸红",{"left_eye":"(","right_eye":")","mouth":"ω≦","decoration":"*"}],["(*^‿^*)","happy","blush","happy,blush,smile","脸红笑",{"left_eye":"(","right_eye":")","mouth":"^‿^","decoration":"*"}],["(*/ω＼*)","shy","blush","shy,blush,embarrassed","害羞脸红",{"left_eye":"(","right_eye":")","mouth":"ω","decoration":"*/＼*"}],["(*≧▽≦*)","happy","blush","happy,blush,excited","兴奋脸红",{"left_eye":"(","right_eye":")","mouth":"▽≦","decoration":"*"}],["(*￣∇￣*)","happy","blush","happy,blush,smile","脸红笑",{"left_eye":"(","right_eye":")","mouth":"￣∇￣","decoration":"*"}],["(*￣︶￣*)","happy","blush","happy,blush,content","满足脸红",{"left_eye":"(","right_eye":")","mouth":"￣︶￣","decoration":"*"}],["(o´∀`o)","happy","cute","happy,cute,smile","可爱笑",{"left_eye":"(","right_eye":")","mouth":"´∀`"}],["(≧∇≦)/","happy","excited","happy,excited,cheer","兴奋欢呼",{"left_eye":"(","right_eye":")","mouth":"∇≦","hand":"/"}],["(≧∇≦*)","happy","excited","happy,excited,blush","兴奋脸红",{"left_eye":"(","right_eye":")","mouth":"∇≦","decoration":"*"}],["(≧▽≦)","happy","excited","happy,excited,smile","兴奋笑",{"left_eye":"(","right_eye":")","mouth":"▽≦"}],["(≧∀≦)","happy","excited","happy,excited,laugh","兴奋大笑",{"left_eye":"(","right_eye":")","mouth":"∀≦"}],["(≧ω≦)","happy","excited","happy,excited,smile","兴奋笑",{"left_eye":"(","right_eye":")","mouth":"ω≦"}],["(≧▽≦)/","happy","excited","happy,excited,cheer","兴奋欢呼",{"left_eye":"(","right_eye":")","mouth":"▽≦","hand":"/"}],["(≧∀≦)ゞ","happy","salute","happy,salute","敬礼",{"left_eye":"(","right_eye":")","mouth":"∀≦","hand":"ゞ"}],["( ´ ▽ ` )","happy","smile","happy,smile","微笑",{"left_eye":"(","right_eye":")","mouth":"´ ▽ `"}],["( ´ ∀ ` )","happy","smile","happy,smile","微笑",{"left_eye":"(","right_eye":")","mouth":"´ ∀ `"}],["( ´ ω ` )","happy","smile","happy,smile","微笑",{"left_eye":"(","right_eye":")","mouth":"´ ω `"}],["( ´ ▽ ` )ﾉ","happy","wave","happy,wave","挥手",{"left_eye":"(","right_eye":")","mouth":"´ ▽ `","hand":"ﾉ"}],["( ´ ∀ `)ﾉ","happy","wave","happy,wave","挥手",{"left_eye":"(","right_eye":")","mouth":"´ ∀ `","hand":"ﾉ"}],["(´･ω･`)","shy","shy","shy,cute","害羞",{"left_eye":"(","right_eye":")","mouth":"･ω･"}],["(´・ω・`)","shy","shy","shy,cute","害羞",{"left_eye":"(","right_eye":")","mouth":"・ω・"}],["(´･_･`)","shy","shy","shy,quiet","害羞",{"left_eye":"(","right_eye":")","mouth":"･_･"}],["(´-ω-`)","relaxed","relaxed","relaxed,content","放松",{"left_eye":"(","right_eye":")","mouth":"-ω-"}],["(´-ω-)","relaxed","relaxed","relaxed,content","放松",{"left_eye":"(","right_eye":")","mouth":"-ω-"}],["(-ω-)","relaxed","relaxed","relaxed,sleepy","放松困",{"left_eye":"(","right_eye":")","mouth":"-ω-"}],["(ーωー)","relaxed","relaxed","relaxed,content","放松",{"left_eye":"(","right_eye":")","mouth":"ーωー"}],["(˘ω˘)","sleepy","sleepy","sleepy,tired","困",{"left_eye":"(","right_eye":")","mouth":"ω"}],["(˘∀˘)","sleepy","sleepy","sleepy,content","困满足",{"left_eye":"(","right_eye":")","mouth":"∀"}],["(˘︶˘)","sleepy","sleepy","sleepy,content","困满足",{"left_eye":"(","right_eye":")","mouth":"︶˘"}],["( ˘ω˘ )","sleepy","sleepy","sleepy,tired","困",{"left_eye":"(","right_eye":")","mouth":"˘ω˘"}],["( ˘³˘)","sleepy","kiss","sleepy,kiss,love","困亲吻",{"left_eye":"(","right_eye":")","mouth":"˘³˘"}],["( ˘▽˘)","sleepy","sleepy","sleepy,content","困满足",{"left_eye":"(","right_eye":")","mouth":"˘▽˘"}],["( ˘∀˘ )","sleepy","sleepy","sleepy,content","困满足",{"left_eye":"(","right_eye":")","mouth":"˘∀˘"}],["(︶ω︶)","happy","content","happy,content,smile","满足笑",{"left_eye":"(","right_eye":")","mouth":"︶ω︶"}],["(︶▽︶)","happy","content","happy,content,smile","满足笑",{"left_eye":"(","right_eye":")","mouth":"︶▽︶"}],["(︶∀︶)","happy","content","happy,content,smile","满足笑",{"left_eye":"(","right_eye":")","mouth":"︶∀︶"}],["(︶.︶)","happy","content","happy,content,smile","满足笑",{"left_eye":"(","right_eye":")","mouth":"︶.︶"}],["(◕ᴗ◕)","happy","cute","happy,cute,smile","可爱笑",{"left_eye":"(","right_eye":")","mouth":"ᴗ"}],["(●´ω`●)","happy","cute","happy,cute,smile","可爱笑",{"left_eye":"(","right_eye":")","mouth":"´ω`"}],["(●♡∀♡)","love","love","love,heart,cute","爱心可爱",{"left_eye":"(","right_eye":")","mouth":"♡∀♡"}],["(●≧ω≦)","happy","excited","happy,excited,smile","兴奋笑",{"left_eye":"(","right_eye":")","mouth":"≧ω≦"}],["(●˙▾˙●)","happy","cute","happy,cute,smile","可爱笑",{"left_eye":"(","right_eye":")","mouth":"˙▾˙"}],["(●°u°●)","happy","cute","happy,cute,smile","可爱笑",{"left_eye":"(","right_eye":")","mouth":"°u°"}],["(●´∀`●)","happy","cute","happy,cute,smile","可爱笑",{"left_eye":"(","right_eye":")","mouth":"´∀`"}],["(●ↀωↀ●)","happy","cat","happy,cat,ears","猫耳笑",{"left_eye":"(","right_eye":")","mouth":"ω"}],["(╥﹏╥)","sad","cry","sad,cry,tear","大哭",{"left_eye":"(","right_eye":")","mouth":"﹏"}],["(ಥ﹏ಥ)","sad","cry","sad,cry,tear","大哭",{"left_eye":"(","right_eye":")","mouth":"﹏"}],["(T_T)","sad","cry","sad,cry,tear","哭",{"left_eye":"(","right_eye":")","mouth":"_"}],["(ToT)","sad","cry","sad,cry,tear","哭",{"left_eye":"(","right_eye":")","mouth":"o"}],["(;_;)","sad","cry","sad,cry,tear","哭",{"left_eye":"(","right_eye":")","mouth":"_"}],["(；_；)","sad","cry","sad,cry,tear","哭",{"left_eye":"(","right_eye":")","mouth":"_"}],["(╯︵╰,)","sad","sad","sad,cry","难过",{"left_eye":"(","right_eye":")","mouth":"︵╰"}],["(｡•́︿•̀｡)","sad","sad","sad,cry","难过",{"left_eye":"(","right_eye":")","mouth":"•́︿•̀"}],["(´；ω；`)","sad","cry","sad,cry,tear","哭",{"left_eye":"(","right_eye":")","mouth":"；ω；"}],["(；ω；)","sad","cry","sad,cry,tear","哭",{"left_eye":"(","right_eye":")","mouth":"ω"}],["(╥_╥)","sad","cry","sad,cry,tear","哭",{"left_eye":"(","right_eye":")","mouth":"_"}],["(ಥ_ಥ)","sad","cry","sad,cry,tear","哭",{"left_eye":"(","right_eye":")","mouth":"_"}],["(ノ_<。)","sad","cry","sad,cry,tear","哭",{"left_eye":"(","right_eye":")","mouth":"<。"}],["(｡╯︵╰｡)","sad","sad","sad,cry","难过",{"left_eye":"(","right_eye":")","mouth":"╯︵╰"}],["(´；д；`)","sad","cry","sad,cry,tear","大哭",{"left_eye":"(","right_eye":")","mouth":"；д；"}],["(；д；)","sad","cry","sad,cry,tear","大哭",{"left_eye":"(","right_eye":")","mouth":"д"}],["(つ╥﹏╥つ)","sad","hug","sad,hug,cry","哭求抱",{"left_eye":"(","right_eye":")","mouth":"╥﹏╥","hand":"つつ"}],["(っ╥╯﹏╰╥c)","sad","cry","sad,cry,tear","哭",{"left_eye":"(","right_eye":")","mouth":"╯﹏╰"}],["(ノAヽ)","sad","cry","sad,cry,tear","哭",{"left_eye":"(","right_eye":")","mouth":"A"}],["(╯°□°）╯︵ ┻━┻","angry","flip_table","angry,flip,rage","掀桌",{"left_eye":"(","right_eye":")","mouth":"□°","hand":"╯","item":"┻━┻"}],["┬─┬ノ( º _ ºノ)","calm","fix_table","calm,fix","扶桌",{"left_eye":"(","right_eye":")","mouth":"_","hand":"ノ"}],["┻━┻ ︵ヽ(`Д´)ﾉ︵ ┻━┻","rage","double_flip","rage,flip","双掀桌",{"left_eye":"(","right_eye":")","mouth":"Д","hand":"ﾉ","item":"┻━┻"}],["(ノಠ益ಠ)ノ彡┻━┻","rage","flip_table","rage,flip","掀桌",{"left_eye":"(","right_eye":")","mouth":"益","hand":"ノ","item":"┻━┻"}],["(╯°Д°)╯︵ /(.□ . \\)","angry","throw_person","angry,throw","扔人",{"left_eye":"(","right_eye":")","mouth":"Д","hand":"╯"}],["(ノಥ,_｣ಥ)ノ彡┻━┻","sad","flip_table","sad,flip","掀桌",{"left_eye":"(","right_eye":")","mouth":"｣","hand":"ノ","item":"┻━┻"}],["┻━┻︵╰(‵□′)╯︵┻━┻","rage","double_flip","rage,flip","双掀桌",{"left_eye":"(","right_eye":")","mouth":"□","hand":"╯","item":"┻━┻"}],["(╬ Ò﹏Ó)","angry","angry","angry,rage","生气",{"left_eye":"(","right_eye":")","mouth":"﹏"}],["(凸ಠ益ಠ)凸","angry","middle_finger","angry,rude,middle_finger","中指",{"left_eye":"(","right_eye":")","mouth":"益","hand":"凸凸"}],["(ಠ_ಠ)","disapproval","stare","disapproval,stare","凝视不爽",{"left_eye":"(","right_eye":")","mouth":"_"}],["(ಠ‿ಠ)","playful","stare","playful,stare","凝视",{"left_eye":"(","right_eye":")","mouth":"‿"}],["(눈_눈)","disapproval","stare","disapproval,stare,annoyed","不爽凝视",{"left_eye":"(","right_eye":")","mouth":"_"}],["(¬_¬)","disapproval","annoyed","disapproval,annoyed,sarcastic","不爽",{"left_eye":"(","right_eye":")","mouth":"_"}],["(¬‿¬)","playful","smirk","playful,smirk,smug","得意",{"left_eye":"(","right_eye":")","mouth":"‿"}],["(￣^￣)","angry","angry","angry","生气",{"left_eye":"(","right_eye":")","mouth":"^"}],["(￣ε￣)","playful","kiss","playful,kiss","亲吻",{"left_eye":"(","right_eye":")","mouth":"ε"}],["(ーー;)","nervous","sweat","nervous,sweat","紧张汗",{"left_eye":"(","right_eye":")","mouth":"ー"}],["(；一_一)","annoyed","annoyed","annoyed","不爽",{"left_eye":"(","right_eye":")","mouth":"一_一"}],["(╯°□°)╯","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"□°","hand":"╯"}],["(°□°)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"□°"}],["(O_O)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"_"}],["(o_o)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"_"}],["(O.O)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"."}],["(o.o)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"."}],["(⊙_⊙)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"_"}],["(⊙.⊙)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"."}],["(⊙▽⊙)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"▽"}],["(⊙ω⊙)","surprised","surprised","surprised,cute","惊讶可爱",{"left_eye":"(","right_eye":")","mouth":"ω"}],["(◎_◎)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"_"}],["(◎.◎)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"."}],["(◎▽◎)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"▽"}],["(◉_◉)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"_"}],["(◉.◉)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"."}],["(◉▽◉)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"▽"}],["(°ロ°)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"ロ"}],["(°△°)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"△"}],["(°◇°)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"◇"}],["(°▽°)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"▽"}],["(°∀°)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"∀"}],["(°ω°)","surprised","surprised","surprised,cute","惊讶可爱",{"left_eye":"(","right_eye":")","mouth":"ω"}],["(°ー°)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"ー"}],["(°.°)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"."}],["(°_°)","surprised","surprised","surprised,shock","震惊",{"left_eye":"(","right_eye":")","mouth":"_"}],["(・_・)","confused","confused","confused","困惑",{"left_eye":"(","right_eye":")","mouth":"_"}],["(・.・)","confused","confused","confused","困惑",{"left_eye":"(","right_eye":")","mouth":"."}],["(・ω・)","confused","confused","confused,cute","困惑可爱",{"left_eye":"(","right_eye":")","mouth":"ω"}],["(・▽・)","confused","confused","confused","困惑",{"left_eye":"(","right_eye":")","mouth":"▽"}],["(・∀・)","confused","confused","confused","困惑",{"left_eye":"(","right_eye":")","mouth":"∀"}],["(・ー・)","confused","confused","confused","困惑",{"left_eye":"(","right_eye":")","mouth":"ー"}],["(・◇・)","confused","confused","confused","困惑",{"left_eye":"(","right_eye":")","mouth":"◇"}],["(・△・)","confused","confused","confused","困惑",{"left_eye":"(","right_eye":")","mouth":"△"}],["(・_・;)","confused","sweat","confused,sweat","困惑汗",{"left_eye":"(","right_eye":")","mouth":"_"}],["(￣ー￣)","neutral","neutral","neutral,flat","中性",{"left_eye":"(","right_eye":")","mouth":"ー"}],["(￣_￣)","neutral","neutral","neutral,flat","中性",{"left_eye":"(","right_eye":")","mouth":"_"}],["(￣▽￣)","happy","smile","happy,smile","笑",{"left_eye":"(","right_eye":")","mouth":"▽"}],["(￣∀￣)","happy","smile","happy,smile","笑",{"left_eye":"(","right_eye":")","mouth":"∀"}],["(￣︶￣)","happy","content","happy,content","满足",{"left_eye":"(","right_eye":")","mouth":"︶"}],["(￣.￣)","neutral","neutral","neutral,flat","中性",{"left_eye":"(","right_eye":")","mouth":"."}],["(￣◇￣)","neutral","neutral","neutral,flat","中性",{"left_eye":"(","right_eye":")","mouth":"◇"}],["(￣△￣)","neutral","neutral","neutral,flat","中性",{"left_eye":"(","right_eye":")","mouth":"△"}],["(一_一)","annoyed","annoyed","annoyed","不爽",{"left_eye":"(","right_eye":")","mouth":"一_一"}],["(一ω一)","relaxed","relaxed","relaxed,content","放松",{"left_eye":"(","right_eye":")","mouth":"ω"}],["(一▽一)","happy","smile","happy,smile","笑",{"left_eye":"(","right_eye":")","mouth":"▽"}],["(一∀一)","happy","smile","happy,smile","笑",{"left_eye":"(","right_eye":")","mouth":"∀"}],["(一.一)","sleepy","sleepy","sleepy,tired","困",{"left_eye":"(","right_eye":")","mouth":"."}],["(ー_ー)","annoyed","annoyed","annoyed","不爽",{"left_eye":"(","right_eye":")","mouth":"_"}],["(ー▽ー)","happy","smile","happy,smile","笑",{"left_eye":"(","right_eye":")","mouth":"▽"}],["(ー∀ー)","happy","smile","happy,smile","笑",{"left_eye":"(","right_eye":")","mouth":"∀"}],["(ー.ー)","sleepy","sleepy","sleepy,tired","困",{"left_eye":"(","right_eye":")","mouth":"."}],["(///_///)","shy","blush","shy,blush,embarrassed","害羞脸红",{"left_eye":"(","right_eye":")","mouth":"_","decoration":"///"}],["(⁄ ⁄•⁄ω⁄•⁄ ⁄)","shy","blush","shy,blush,embarrassed","害羞脸红",{"left_eye":"(","right_eye":")","mouth":"ω","decoration":"⁄ ⁄•⁄•⁄ ⁄"}],["(///ω///)","shy","blush","shy,blush,embarrassed","害羞脸红",{"left_eye":"(","right_eye":")","mouth":"ω","decoration":"///"}],["(//ω//)","shy","blush","shy,blush,embarrassed","害羞脸红",{"left_eye":"(","right_eye":")","mouth":"ω","decoration":"//"}],["(//_//)","shy","blush","shy,blush,embarrassed","害羞脸红",{"left_eye":"(","right_eye":")","mouth":"_","decoration":"//"}],["(⁄ ⁄>⁄ ▽ ⁄<⁄ ⁄)","shy","blush","shy,blush,embarrassed","害羞脸红",{"left_eye":"(","right_eye":")","mouth":"▽","decoration":"⁄ ⁄>⁄⁄<⁄ ⁄"}],["ʕ•ᴥ•ʔ","happy","bear","happy,bear,ears","熊",{"left_eye":"(","right_eye":")","mouth":"ᴥ","decoration":"ʕʔ"}],["ʕ•̀ω•́ʔ","happy","bear","happy,bear,ears","熊",{"left_eye":"(","right_eye":")","mouth":"ω","decoration":"ʕʔ"}],["ʕᴥʔ","happy","bear","happy,bear,ears","熊",{"left_eye":"(","right_eye":")","mouth":"ᴥ","decoration":"ʕʔ"}],["ʕ•ﻌ•ʔ","happy","bear","happy,bear,ears","熊",{"left_eye":"(","right_eye":")","mouth":"ﻌ","decoration":"ʕʔ"}],["(◕ᴥ◕)","happy","dog","happy,dog","狗",{"left_eye":"(","right_eye":")","mouth":"ᴥ"}],["▽・ᴥ・▽","happy","dog","happy,dog","狗",{"left_eye":"(","right_eye":")","mouth":"ᴥ"}],["(•ө•)","happy","bird","happy,bird","鸟",{"left_eye":"(","right_eye":")","mouth":"ө"}],["(˘•ω•˘)","happy","fish","happy,fish","鱼",{"left_eye":"(","right_eye":")","mouth":"ω"}],["(๑•ᴗ•๑)","happy","pig","happy,pig,nose","猪鼻",{"left_eye":"(","right_eye":")","mouth":"ᴗ"}],["(๑•̀ㅂ•́)و✧","encourage","cheer","encourage,cheer,sparkle","加油",{"left_eye":"(","right_eye":")","mouth":"ㅂ","hand":"و","decoration":"✧"}],["(x_x)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"_"}],["(X_X)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"_"}],["(+_+)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"_"}],["(@_@)","dizzy","dizzy","dizzy,confused","晕",{"left_eye":"(","right_eye":")","mouth":"_"}],["(×_×)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"_"}],["(×.×)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"."}],["(×▽×)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"▽"}],["(×ω×)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"ω"}],["(×∀×)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"∀"}],["(×ー×)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"ー"}],["(Φ_Φ)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"_"}],["(Φ.Φ)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"."}],["(Φ▽Φ)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"▽"}],["(ΦωΦ)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"ω"}],["(Φ∀Φ)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"∀"}],["(ΦーΦ)","dead","dead","dead,unconscious","死",{"left_eye":"(","right_eye":")","mouth":"ー"}],["(ノ◕ヮ◕)ノ*:・゚✧","happy","magic","happy,magic,sparkle","魔法闪光",{"left_eye":"(","right_eye":")","mouth":"ヮ","decoration":"*:・゚✧"}],["ლ(́◉◞౪◟◉‵ლ)","angry","grab","angry,grab","抓",{"left_eye":"(","right_eye":")","mouth":"◉◞౪◟◉","hand":"ლლ"}],["ლ(ಠ益ಠლ)","rage","grab","rage,grab","抓",{"left_eye":"(","right_eye":")","mouth":"ಠ益ಠ","hand":"ლლ"}],["ლ(ಠ_ಠლ)","annoyed","grab","annoyed,grab","抓",{"left_eye":"(","right_eye":")","mouth":"ಠ_ಠ","hand":"ლლ"}],["( ͡° ͜ʖ ͡°)","playful","lenny","playful,lenny,smirk","Lenny脸",{"left_eye":"(","right_eye":")","mouth":"͜ʖ"}],["( ͡❛ ͜ʖ ͡❛)","playful","lenny","playful,lenny,smirk","Lenny脸",{"left_eye":"(","right_eye":")","mouth":"͜ʖ"}],["( ͡~ ͜ʖ ͡°)","playful","lenny","playful,lenny,smirk","Lenny脸",{"left_eye":"(","right_eye":")","mouth":"͜ʖ"}],["( ͡° ͜ ͡°)","playful","lenny","playful,lenny","Lenny脸",{"left_eye":"(","right_eye":")","mouth":"͜"}],["( ͡ᵔ ͜ʖ ͡ᵔ)","playful","lenny","playful,lenny,cute","Lenny脸",{"left_eye":"(","right_eye":")","mouth":"͜ʖ"}],["( ͡° ʖ ͡°)","playful","lenny","playful,lenny","Lenny脸",{"left_eye":"(","right_eye":")","mouth":"ʖ"}],["( ͡°╭͜ʖ╮͡° )","playful","lenny","playful,lenny","Lenny脸",{"left_eye":"(","right_eye":")","mouth":"͜ʖ"}],["( ͡° ͜ʖ ͡°)つ","playful","lenny","playful,lenny","Lenny脸",{"left_eye":"(","right_eye":")","mouth":"͜ʖ","hand":"つ"}],["( ͡° ͜ʖ ͡°)╯","playful","lenny","playful,lenny","Lenny脸",{"left_eye":"(","right_eye":")","mouth":"͜ʖ","hand":"╯"}],["( ͡° ͜ʖ ͡°)ノ","playful","lenny","playful,lenny","Lenny脸",{"left_eye":"(","right_eye":")","mouth":"͜ʖ","hand":"ノ"}],[":)","happy","simple","happy,smile,simple","简单微笑",{"mouth":")"}],[":(","sad","simple","sad,frown,simple","简单难过",{"mouth":"("}],[":D","happy","simple","happy,laugh,simple","简单大笑",{"mouth":"D"}],[":P","playful","simple","playful,tongue,simple","简单吐舌",{"mouth":"P"}],[";)","wink","simple","wink,simple","简单眨眼",{"mouth":")"}],[":'(","sad","simple","sad,cry,simple","简单哭",{"mouth":"("}],[":O","surprised","simple","surprised,simple","简单惊讶",{"mouth":"O"}],[":/","annoyed","simple","annoyed,simple","简单不爽",{"mouth":"/"}],[":|","neutral","simple","neutral,simple","简单中性",{"mouth":"|"}],[":3","cute","simple","cute,cat,simple","简单猫嘴",{"mouth":"3"}],["=)","happy","simple","happy,smile,simple","简单微笑",{"mouth":")"}],["=(","sad","simple","sad,frown,simple","简单难过",{"mouth":"("}],["=D","happy","simple","happy,laugh,simple","简单大笑",{"mouth":"D"}],["=P","playful","simple","playful,tongue,simple","简单吐舌",{"mouth":"P"}],["^_^","happy","simple","happy,smile,simple","简单微笑",{"mouth":"^_^"}],[">_<","annoyed","simple","annoyed,simple","简单不爽",{"mouth":"_<"}],["T_T","sad","simple","sad,cry,simple","简单哭",{"mouth":"_"}],[">:(","angry","simple","angry,simple","简单生气",{"mouth":"("}],[">:)","evil","simple","evil,simple","简单邪恶",{"mouth":")"}],["<3","love","simple","love,heart,simple","简单爱心",{"mouth":"3"}],["<\/3","sad","simple","sad,broken_heart,simple","简单碎心",{"mouth":"/3"}],[":*","kiss","simple","kiss,simple","简单亲吻",{"mouth":"*"}],["B)","cool","simple","cool,sunglasses,simple","简单酷",{"mouth":")"}],["xD","laugh","simple","laugh,simple","简单大笑",{"mouth":"D"}],["XD","laugh","simple","laugh,simple","简单大笑",{"mouth":"D"}],["xP","playful","simple","playful,tongue,simple","简单吐舌",{"mouth":"P"}],["XP","playful","simple","playful,tongue,simple","简单吐舌",{"mouth":"P"}],[":')","happy","simple","happy,tear,simple","简单笑哭",{"mouth":"')"}],[";(","sad","simple","sad,cry,simple","简单哭",{"mouth":"("}],[":-)","happy","simple","happy,smile,simple","简单微笑",{"mouth":"-)"}],[":-(","sad","simple","sad,frown,simple","简单难过",{"mouth":"-("}],[":-D","happy","simple","happy,laugh,simple","简单大笑",{"mouth":"-D"}],[":-P","playful","simple","playful,tongue,simple","简单吐舌",{"mouth":"-P"}],[";-)","wink","simple","wink,simple","简单眨眼",{"mouth":"-)"}],[":-O","surprised","simple","surprised,simple","简单惊讶",{"mouth":"-O"}],[":-/","annoyed","simple","annoyed,simple","简单不爽",{"mouth":"-/"}],[":-|","neutral","simple","neutral,simple","简单中性",{"mouth":"-|"}],[":-3","cute","simple","cute,cat,simple","简单猫嘴",{"mouth":"-3"}],["(ノ◕ヮ◕)ﾉ*:・゚✧","magic","magic","magic,sparkle","施法",{"left_eye":"(","right_eye":")","mouth":"ヮ","decoration":"*:・゚✧"}]];         // [face, mood, category, tags, desc, parts]
+
+/* ================= 常量 ================= */
+const MIRROR = {'(':')',')':'(','（':'）','）':'（','[':']',']':'[','［':'］','］':'［','{':'}','}':'{','｛':'｝','｝':'｛',
+ '〈':'〉','〉':'〈','《':'》','》':'《','「':'」','」':'「','『':'』','』':'『','【':'】','】':'【','〔':'〕','〕':'〔','〖':'〗','〗':'〖',
+ '＜':'＞','＞':'＜','<':'>','>':'<','⊂':'⊃','⊃':'⊂','⊆':'⊇','⊇':'⊆','╮':'╭','╭':'╮','╰':'╯','╯':'╰',
+ '`':'´','´':'`','ˏ':'ˎ','ˎ':'ˏ','q':'p','p':'q','b':'d','d':'b','ヽ':'ノ','ノ':'ヽ',
+ '◤':'◥','◥':'◤','◣':'◢','◢':'◣','◖':'◗','◗':'◖','◜':'◝','◝':'◜','◟':'◞','◞':'◟','◠':'◡','◡':'◠'};
+const OPENERS = new Set(['(','（','[','［','{','｛','〈','《','「','『','【','〔','〖','༼','ʕ','╮','╰','⊂','⊆','＜','<']);
+const CLOSERS = new Set([')','）',']','］','}','｝','〉','》','」','』','】','〕','〗','༽','ʔ','╭','╯','⊃','⊇','＞','>']);
+
+const FRAME_PAIRS = [
+ ['(',')','圆括号'],['（','）','全角括号'],['[',']','方括号'],['［','］','全角方括号'],
+ ['{','}','花括号'],['｛','｝','全角花括号'],['〈','〉','尖括号'],['《','》','书名号'],
+ ['「','」','日式引号'],['『','』','双重引号'],['【','】','实心框'],['〔','〕','龟甲框'],['〖','〗','空心框'],
+ ['ʕ','ʔ','熊耳'],['༼','༽','藏文耳'],['╮','╭','摊手框']];
+const FRAME_CORE = [['(',')'],['(',')'],['(',')'],['（','）'],['༼','༽'],['ʕ','ʔ'],['[',']'],['「','」'],['【','】'],['〈','〉'],['《','》'],['『','』'],['〔','〕'],['〖','〗'],['｛','｝'],['╮','╭']];
+
+const FLANK_LIST = [
+ ['','🚫 无'],['star','🌟 星光'],['shine','✨ 闪亮'],['music','🎵 音符'],['flower','🌸 花团'],['wave','〰️ 波浪']];
+const FLANKS = {'':['',''],'star':['☆*:.｡.o ',' o.｡.:*☆'],'shine':['✧✧✧ ',' ✧✧✧'],'music':['♪♪♪ ',' ♪♪♪'],
+ 'flower':['✿✿✿ ',' ✿✿✿'],'wave':['〜〜〜 ',' 〜〜〜']};
+
+const FALLBACK = {
+ eyes:['^','´','`','•','●','◕','◉','◎','⊙','≧','≦','＞','＜','♡','✧','￣','T','@'],
+ mouth:['‿','◡','ω','∀','▽','ー','Д','ε','з','o','O','口','u','ᴗ','_','-','～','︶']};
+
+const PRESETS = [
+ {id:'happy',label:'开心',emoji:'😄',w:3,eyeTags:['happy','cheerful','pleased'],eyeSub:['normal','big','closed'],mouthTags:['happy','smile'],mouthSub:['smile'],armP:.5,armTags:['wave','raise'],cheekP:.35,cheekTags:['blush'],tailP:.2,tailTags:['sparkle','star'],propP:.12,propTags:['party','drink','food']},
+ {id:'cute',label:'卖萌',emoji:'🥰',w:3,eyeTags:['cute'],eyeSub:['big','flower'],mouthTags:['cute'],mouthSub:['triangle','round'],cheekP:.5,cheekTags:['blush','heart','flower'],armP:.35,armTags:['hug','wave'],tailP:.25,tailTags:['sparkle','flower']},
+ {id:'love',label:'恋爱',emoji:'😍',w:2,eyeTags:['love','heart'],eyeSub:['love'],mouthTags:['kiss'],mouthSub:['kiss'],cheekP:.55,cheekTags:['heart','blush'],tailP:.35,tailTags:['heart','love'],armP:.3,armTags:['hug']},
+ {id:'laugh',label:'大笑',emoji:'😂',w:2,eyeTags:['happy'],eyeSub:['closed'],mouthTags:['laugh'],mouthSub:['teeth','tongue','open','laugh'],armP:.6,armTags:['raise','wave'],tailP:.15,tailTags:['exclaim']},
+ {id:'shy',label:'害羞',emoji:'😳',w:2,eyeTags:['shy','wink','pleased'],eyeSub:['normal','closed'],mouthTags:['pout'],mouthSub:['pout','smile'],cheekP:.65,cheekTags:['blush','blush_lines'],tearP:.15,tearTags:['sweat']},
+ {id:'sad',label:'难过',emoji:'🥺',w:2,eyeTags:['sad','cry','tear'],eyeSub:['tear','closed'],mouthTags:['sad','cry','frown'],mouthSub:['cry','frown','wavy'],tearP:.75,tearTags:['tear','cry'],cheekP:.1,cheekTags:['lines']},
+ {id:'angry',label:'生气',emoji:'😠',w:1.5,eyeTags:['angry'],eyeSub:['angry'],mouthTags:['angry'],mouthSub:['angry'],cheekP:.3,cheekTags:['anger','steam','vein'],armP:.5,armTags:['raise','lower']},
+ {id:'shock',label:'震惊',emoji:'😱',w:1.5,eyeTags:['surprised','open'],eyeSub:['big','confused'],mouthTags:['surprised','open'],mouthSub:['surprised','open'],armP:.5,armTags:['raise'],tailP:.15,tailTags:['exclaim','question']},
+ {id:'meh',label:'无语',emoji:'😑',w:1.5,eyeTags:['disapproval','flat','stare','unconscious'],eyeSub:['normal'],mouthTags:['flat','sarcastic'],mouthSub:['flat','tight','smirk'],tearP:.3,tearTags:['sweat'],cheekP:.15,cheekTags:['lines']},
+ {id:'sleepy',label:'犯困',emoji:'😴',w:1.5,eyeTags:['tired','closed','sleep'],eyeSub:['closed'],mouthTags:['sleepy'],mouthSub:['closed','wavy'],tailP:.5,tailTags:['zzz','sleep','music'],armP:.3,armTags:['lower']},
+ {id:'cool',label:'高冷',emoji:'😎',w:1.5,eyeTags:['stare','smug','sunglasses','squint'],eyeSub:['normal'],mouthTags:['smirk'],mouthSub:['smirk','tight'],tailP:.2,tailTags:['sparkle','star']},
+ {id:'magic',label:'魔法',emoji:'✨',w:2,eyeTags:['sparkle','star'],eyeSub:['sparkle','big'],mouthTags:['happy','open'],mouthSub:['open','smile'],tailP:.95,tailTags:['sparkle','star','magic'],armP:.6,armTags:['wave','raise'],flankP:.5},
+];
+
+const MOOD_CN = {happy:'开心',sad:'难过',shy:'害羞',playful:'顽皮',cool:'酷',helpless:'无奈',encourage:'鼓励',fight:'加油',
+ nervous:'紧张',cry:'大哭',love:'恋爱',magic:'魔法',relaxed:'放松',sleepy:'犯困',angry:'生气',calm:'平静',rage:'暴怒',
+ disapproval:'不赞同',annoyed:'烦躁',surprised:'震惊',confused:'困惑',neutral:'平静',dead:'躺平',dizzy:'晕',wink:'眨眼',
+ cute:'可爱',evil:'邪恶',kiss:'亲亲',laugh:'大笑'};
+
+const PART_TABS = [
+ {id:'frame',label:'🪞 脸框'},{id:'eyes',label:'👁 眼睛'},{id:'mouth',label:'👄 嘴巴'},{id:'cheek',label:'🌸 脸颊'},
+ {id:'sweat_tear',label:'💧 汗泪'},{id:'arms',label:'💪 手臂'},{id:'hands',label:'🤚 手势'},{id:'decoration',label:'🎀 装饰'},
+ {id:'magic',label:'✨ 魔法'},{id:'headwear',label:'👑 头饰'},{id:'props',label:'🍦 道具'},{id:'symbols',label:'➗ 符号'}];
+
+const BONUS_MOUTH = [['ω','animal_ears','cat','猫嘴','cat,cute'],['3','animal_ears','cat','猫嘴','cat,cute']];
+const BONUS_HANDS = [['ฅ','animal_ears','cat','猫爪·两侧','cat,cute']];
+
+const SLOTS = [
+ {key:'headwear',label:'头饰',tab:'headwear'},
+ {key:'leftArm',label:'左手',tab:'arms'},
+ {key:'leftEar',label:'左脸框',tab:'frame'},
+ {key:'leftTear',label:'左泪汗',tab:'sweat_tear'},
+ {key:'leftCheek',label:'左脸颊',tab:'cheek'},
+ {key:'leftEye',label:'左眼',tab:'eyes'},
+ {key:'mouth',label:'嘴巴',tab:'mouth'},
+ {key:'rightEye',label:'右眼',tab:'eyes'},
+ {key:'rightCheek',label:'右脸颊',tab:'cheek'},
+ {key:'rightTear',label:'右泪汗',tab:'sweat_tear'},
+ {key:'rightEar',label:'右脸框',tab:'frame'},
+ {key:'rightArm',label:'右手',tab:'arms'},
+];
+
+/* ================= 状态 ================= */
+const state = {headwear:'',leftArm:'',rightArm:'',leftEar:'',rightEar:'',leftTear:'',rightTear:'',
+ leftCheek:'',rightCheek:'',leftEye:'',rightEye:'',mouth:'',props:[],tail:[],flank:'',autoFrame:true,size:38};
+const modes = {eye:'both',arm:'auto',hand:'both',cheek:'both'};
+let activeTab = 'eyes', libQuery = '', currentItems = [], currentKM = [];
+let SAVED = loadSaved();
+
+/* ================= 工具 ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const rnd = n => Math.floor(Math.random()*n);
+const rndPick = a => a && a.length ? a[rnd(a.length)] : '';
+const isEmojiChar = ch => { const cp = ch.codePointAt(0); return cp >= 0x1F000 || (cp >= 0x2600 && cp <= 0x27BF) || (cp >= 0xFE00 && cp <= 0xFE0F) || cp >= 0x1F300; };
+function pushUnique(arr, v, max){ if (arr.includes(v)) return; if (arr.length >= max) arr.shift(); arr.push(v); }
+function weightedPick(arr, wf){ let sum = 0; const ws = arr.map(x => { const w = wf(x); sum += w; return w; });
+  let r = Math.random()*sum; for (let i = 0; i < arr.length; i++){ r -= ws[i]; if (r <= 0) return arr[i]; } return arr[arr.length-1]; }
+const compsOf = part => COMPS.filter(c => c[1] === part);
+const POOLS = {};
+function poolOf(part){ if (!POOLS[part]) POOLS[part] = [...new Set(compsOf(part).map(c => c[0]))]; return POOLS[part]; }
+const CHEEK_CHARS = new Set(poolOf('cheek'));
+const EYE_SET = new Set(poolOf('eyes'));
+
+function loadSaved(){ try { return JSON.parse(localStorage.getItem('kaomoji_saved')) || []; } catch(e){ return []; } }
+function persist(){ try { localStorage.setItem('kaomoji_saved', JSON.stringify(SAVED.slice(0, 80))); } catch(e){} }
+
+/* ================= 拼装核心 ================= */
+function buildFace(){
+  let le = state.leftEar, re = state.rightEar;
+  if (state.autoFrame && !le && !re){ le = '('; re = ')'; }
+  let propsStr = '';
+  if (state.props.length){
+    propsStr = state.props.join('');
+    if (isEmojiChar(state.props[0])) propsStr = ' ' + propsStr;
+  }
+  let s = state.headwear + state.leftArm + le + state.leftTear + state.leftCheek + state.leftEye
+    + state.mouth + state.rightEye + state.rightCheek + state.rightTear + re + state.rightArm
+    + propsStr + state.tail.join('');
+  const f = FLANKS[state.flank];
+  if (f) s = f[0] + s + f[1];
+  return s;
+}
+
+function pickComp(part, tags, subs){
+  tags = tags || []; subs = subs || [];
+  const pool = compsOf(part);
+  if (!pool.length) return null;
+  let cand = pool.filter(c => (c[4] && c[4].split(',').some(t => tags.includes(t))) || subs.includes(c[2]));
+  if (!cand.length) cand = pool.filter(c => subs.includes(c[2]));
+  if (!cand.length) return null;
+  return cand[rnd(cand.length)][0];
+}
+
+function routeArm(c){
+  const sub = c[2];
+  if (sub === 'left') state.leftArm = c[0];
+  else if (sub === 'right') state.rightArm = c[0];
+  else { state.leftArm = c[0]; state.rightArm = MIRROR[c[0]] || c[0]; }
+}
+
+function clearSlots(){
+  ['headwear','leftArm','rightArm','leftEar','rightEar','leftTear','rightTear','leftCheek','rightCheek',
+   'leftEye','rightEye','mouth'].forEach(k => state[k] = '');
+  state.props = []; state.tail = []; state.flank = '';
+}
+
+function applyPreset(p){
+  clearSlots();
+  const eye = pickComp('eyes', p.eyeTags, p.eyeSub) || rndPick(FALLBACK.eyes);
+  state.leftEye = eye; state.rightEye = MIRROR[eye] || eye;
+  state.mouth = pickComp('mouth', p.mouthTags, p.mouthSub) || rndPick(FALLBACK.mouth);
+  const fr = rndPick(FRAME_CORE); state.leftEar = fr[0]; state.rightEar = fr[1];
+  if (p.armP && Math.random() < p.armP){
+    const pool = compsOf('arms').filter(c => c[4] && c[4].split(',').some(t => (p.armTags || ['wave','raise','hug']).includes(t)));
+    routeArm(rndPick(pool.length ? pool : compsOf('arms')));
+  }
+  if (p.cheekP && Math.random() < p.cheekP){
+    const ch = pickComp('cheek', p.cheekTags, ['blush','heart','flower']) || '*';
+    state.leftCheek = ch; state.rightCheek = ch;
+  }
+  if (p.tearP && Math.random() < p.tearP){
+    const t = rndPick([';','；',"'",'´','`','T']);
+    state.leftTear = t; state.rightTear = t;
+  }
+  if (p.tailP && Math.random() < p.tailP) state.tail = [pickComp('magic', p.tailTags, ['sparkle']) || '✧'];
+  if (p.flankP && Math.random() < p.flankP) state.flank = rndPick(['star','shine','music','flower','wave']);
+  if (p.propP && Math.random() < p.propP){
+    const pr = pickComp('props', p.propTags || ['party','drink','food'], ['drink','food','party']);
+    if (pr) state.props = [pr];
+  }
+  render();
+}
+
+function randomAll(){
+  applyPreset(weightedPick(PRESETS, p => p.w || 1));
+  if (Math.random() < 0.08) state.headwear = rndPick(poolOf('headwear'));
+  render();
+}
+
+function randomSlot(key){
+  switch(key){
+    case 'leftEye': state.leftEye = rndPick(poolOf('eyes')); break;
+    case 'rightEye': state.rightEye = rndPick(poolOf('eyes')); break;
+    case 'mouth': state.mouth = rndPick(poolOf('mouth').concat(['ω'])); break;
+    case 'leftArm': state.leftArm = rndPick(poolOf('arms')); break;
+    case 'rightArm': state.rightArm = rndPick(poolOf('arms')); break;
+    case 'leftCheek': state.leftCheek = rndPick(poolOf('cheek')); break;
+    case 'rightCheek': state.rightCheek = rndPick(poolOf('cheek')); break;
+    case 'leftTear': state.leftTear = rndPick(poolOf('sweat_tear')); break;
+    case 'rightTear': state.rightTear = rndPick(poolOf('sweat_tear')); break;
+    case 'leftEar': case 'rightEar': { const f = rndPick(FRAME_CORE); state.leftEar = f[0]; state.rightEar = f[1]; break; }
+    case 'headwear': state.headwear = rndPick(poolOf('headwear')); break;
+  }
+  render();
+}
+
+/* 组件分配 */
+function assignFromLib(c){
+  const char = c[0], part = c[1], sub = c[2];
+  switch(part){
+    case 'eyes':
+      if (modes.eye === 'left') state.leftEye = char;
+      else if (modes.eye === 'right') state.rightEye = char;
+      else { state.leftEye = char; state.rightEye = MIRROR[char] || char; }
+      break;
+    case 'mouth': state.mouth = char; break;
+    case 'arms':
+      if (modes.arm === 'left') state.leftArm = char;
+      else if (modes.arm === 'right') state.rightArm = char;
+      else if (sub === 'left') state.leftArm = char;
+      else if (sub === 'right') state.rightArm = char;
+      else { state.leftArm = char; state.rightArm = MIRROR[char] || char; }
+      break;
+    case 'hands':
+      if (modes.hand === 'left') state.leftArm = char;
+      else if (modes.hand === 'right') state.rightArm = char;
+      else { state.leftArm = MIRROR[char] || char; state.rightArm = char; }
+      break;
+    case 'cheek':
+      if (modes.cheek === 'left') state.leftCheek = char;
+      else if (modes.cheek === 'right') state.rightCheek = char;
+      else { state.leftCheek = char; state.rightCheek = char; }
+      break;
+    case 'sweat_tear':
+      if (';；\'´`T'.includes(char)){ state.leftTear = char; state.rightTear = char; }
+      else state.rightTear = char;
+      break;
+    case 'animal_ears':
+      if (MIRROR[char] && OPENERS.has(char)){ state.leftEar = char; state.rightEar = MIRROR[char]; }
+      else if (MIRROR[char]) state.mouth = char;
+      else state.mouth = char;
+      break;
+    case 'headwear': state.headwear = (state.headwear === char) ? '' : char; break;
+    case 'decoration':
+      if (OPENERS.has(char)) state.leftEar = char;
+      else if (CLOSERS.has(char)) state.rightEar = char;
+      else pushUnique(state.tail, char, 6);
+      break;
+    case 'magic': pushUnique(state.tail, char, 6); break;
+    case 'props': pushUnique(state.props, char, 3); break;
+    case 'symbols': pushUnique(state.props, char, 3); break;
+  }
+  render();
+}
+
+function setFramePair(l, r){ state.leftEar = l; state.rightEar = r; render(); }
+
+/* ================= 渲染 ================= */
+function bumpEl(el){ el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+
+function render(){
+  const face = buildFace();
+  const pv = $('#preview');
+  pv.textContent = face;
+  pv.style.fontSize = state.size + 'px';
+  bumpEl(pv);
+  $('#faceInput').value = face;
+  $('#faceLen').textContent = face.length + ' 字符';
+  renderSlots(); renderChips(); updateSavedCount();
+}
+
+function renderSlots(){
+  const ghost = state.autoFrame && !state.leftEar && !state.rightEar;
+  $('#slotRow').innerHTML = SLOTS.map(s => {
+    const v = state[s.key];
+    const isEar = s.key === 'leftEar' || s.key === 'rightEar';
+    const disp = v || (isEar && ghost ? (s.key === 'leftEar' ? '(' : ')') : '');
+    return '<div class="slot ' + (v ? 'filled' : '') + (isEar && ghost && !v ? ' ghost' : '') + '" data-key="' + s.key + '" tabindex="0">'
+      + '<span class="slot-label">' + s.label + '</span>'
+      + '<span class="slot-val">' + (disp ? esc(disp) : '&nbsp;') + '</span>'
+      + '<span class="slot-btns"><button class="mini" data-act="rand" title="随机">🎲</button>'
+      + '<button class="mini" data-act="clear" title="清除">✕</button></span></div>';
+  }).join('');
+}
+
+function renderChips(){
+  const mk = (list, key) => list.length
+    ? list.map((p, i) => '<span class="chip">' + esc(p)
+        + '<button class="x" data-list="' + key + '" data-i="' + i + '">✕</button></span>').join('')
+    : '<span class="none">无</span>';
+  $('#propChips').innerHTML = mk(state.props, 'props');
+  $('#tailChips').innerHTML = mk(state.tail, 'tail');
+  $('#flankChips').innerHTML = FLANK_LIST.map(f =>
+    '<span class="chip flankchip ' + (state.flank === f[0] ? 'active' : '') + '" data-flank="' + f[0] + '">' + f[1] + '</span>').join('');
+}
+
+function updateSavedCount(){ $('#savedCount').textContent = SAVED.length; }
+
+function renderLib(){
+  $('#libTabs').innerHTML = PART_TABS.map(t =>
+    '<button class="pill ' + (activeTab === t.id ? 'active' : '') + '" data-tab="' + t.id + '">' + t.label + '</button>').join('');
+  renderLibModes(); renderLibGrid();
+}
+
+function renderLibModes(){
+  const MODE_SETS = {
+    eyes:['eye','双眼对称','只设左眼','只设右眼'],
+    arms:['arm','按组件方向','只设左手','只设右手'],
+    hands:['hand','两侧同款','只设左手','只设右手'],
+    cheek:['cheek','两侧同款','只左脸颊','只右脸颊']};
+  const VALS = ['both','left','right'];
+  const set = MODE_SETS[activeTab];
+  let html = '';
+  if (set){
+    html = '<span class="hint">放置：</span>' + set.slice(1).map((lab, i) =>
+      '<button class="modepill ' + (modes[set[0]] === VALS[i] || (set[0] === 'arm' && modes.arm === 'auto' && i === 0) ? 'active' : '')
+      + '" data-mkey="' + set[0] + '" data-mval="' + (set[0] === 'arm' && i === 0 ? 'auto' : VALS[i]) + '">' + lab + '</button>').join('');
+  }
+  $('#libMode').innerHTML = html;
+}
+
+function renderLibGrid(){
+  let items = [];
+  if (activeTab === 'frame'){
+    items = FRAME_PAIRS.map(p => ({ch: p[0] + '  ' + p[1], d: p[2], act: () => setFramePair(p[0], p[1])}));
+    items.push({ch: '␀', d: '无脸框', act: () => { state.leftEar = ''; state.rightEar = ''; render(); }});
+  } else {
+    let list = compsOf(activeTab);
+    if (activeTab === 'mouth') list = list.concat(BONUS_MOUTH);
+    if (activeTab === 'hands') list = list.concat(BONUS_HANDS);
+    if (libQuery){
+      const q = libQuery.toLowerCase();
+      list = list.filter(c => (c[0] + ' ' + c[2] + ' ' + c[3] + ' ' + c[4]).toLowerCase().includes(q));
+    }
+    const seen = new Set();
+    items = list.filter(c => { const k = c[0] + '|' + c[1] + '|' + c[2]; if (seen.has(k)) return false; seen.add(k); return true; })
+      .map(c => ({ch: c[0], d: c[3], act: () => assignFromLib(c)}));
+  }
+  currentItems = items;
+  $('#libGrid').innerHTML = items.map((it, i) =>
+    '<button class="comp" data-i="' + i + '" title="' + esc(it.d) + '">'
+    + '<span class="ch">' + esc(it.ch) + '</span><span class="d">' + esc(it.d || '') + '</span></button>').join('')
+    || '<div class="empty">没有匹配的组件 (´･_･`)</div>';
+}
+
+function renderGallery(){
+  const q = $('#gSearch').value.trim().toLowerCase();
+  const mood = $('#gMood').value;
+  currentKM = KM.filter(k => {
+    if (mood && k[1] !== mood) return false;
+    if (q && !((k[0] + ' ' + k[1] + ' ' + k[2] + ' ' + k[3] + ' ' + k[4]).toLowerCase().includes(q))) return false;
+    return true;
+  });
+  $('#gCount').textContent = currentKM.length + ' / ' + KM.length;
+  $('#galleryGrid').innerHTML = currentKM.map((k, i) =>
+    '<div class="gcard"><button class="gface" data-i="' + i + '" title="点击复制">' + esc(k[0]) + '</button>'
+    + '<div class="gdesc">' + esc(k[4] || '') + '</div>'
+    + '<div class="gmeta"><span class="tag pink">' + esc(MOOD_CN[k[1]] || k[1]) + '</span>'
+    + (k[2] ? '<span class="tag">' + esc(k[2]) + '</span>' : '') + '</div>'
+    + '<div class="gbtns"><button data-act="copy" data-i="' + i + '">📋 复制</button>'
+    + '<button data-act="draft" data-i="' + i + '">🧩 拆为底稿</button></div></div>').join('')
+    || '<div class="empty" style="grid-column:1/-1">没有匹配的颜文字 (。•́︿•̀。)</div>';
+}
+
+function renderSaved(){
+  $('#savedGrid').innerHTML = SAVED.length
+    ? SAVED.map((f, i) => '<div class="scard"><button class="sface" data-i="' + i + '" title="点击复制">' + esc(f) + '</button>'
+        + '<button class="sx" data-i="' + i + '">✕</button></div>').join('')
+    : '<div class="empty" style="grid-column:1/-1">还没有收藏，去拼一个吧 (๑•̀ㅂ•́)و✧</div>';
+}
+
+function loadAsDraft(k){
+  clearSlots();
+  const p = k[5] || {};
+  const le = p.left_eye || '', re = p.right_eye || '', m = p.mouth || '';
+  if (le) { if (OPENERS.has(le)) state.leftEar = le; else state.leftEye = le; }
+  if (re) { if (CLOSERS.has(re)) state.rightEar = re; else state.rightEye = re; }
+  const bracketed = OPENERS.has(le) && CLOSERS.has(re);
+  if (m && !(OPENERS.has(m) || CLOSERS.has(m))){
+    const arr = [...m];
+    let split = false;
+    if (arr.length === 3 && EYE_SET.has(arr[0]) && EYE_SET.has(arr[2])){
+      state.leftEye = arr[0]; state.mouth = arr[1]; state.rightEye = arr[2]; split = true;
+    } else if (arr.length === 2 && EYE_SET.has(arr[0]) && EYE_SET.has(arr[1])){
+      state.leftEye = arr[0]; state.rightEye = arr[1]; split = true;
+    } else if (arr.length <= 4){
+      state.mouth = m;
+    }
+    // 从原脸字符串里扫描嘴两侧的字符，尝试补全眼睛（如 ヽ(◕ヮ◕)ﾉ 的 parts 只有 mouth=ヮ）
+    if (!split && bracketed && state.mouth){
+      const idx = k[0].indexOf(state.mouth);
+      if (idx > 0){
+        const before = k[0][idx - 1], after = k[0][idx + [...state.mouth].length];
+        if (EYE_SET.has(before) && EYE_SET.has(after)){
+          state.leftEye = before; state.rightEye = after;
+        }
+      }
+    }
+  }
+  if (p.decoration){
+    const d = p.decoration, arr = [...d];
+    if (arr.length === 1){
+      if (CHEEK_CHARS.has(d)){ state.leftCheek = d; state.rightCheek = d; }
+      else if (OPENERS.has(d)) state.leftEar = d;
+      else if (CLOSERS.has(d)) state.rightEar = d;
+      else state.tail = [d];
+    } else if (arr.length <= 8) state.tail = [d];
+  }
+  if (p.hand){
+    const arr = [...p.hand];
+    if (arr.length >= 2){ state.leftArm = arr[0]; state.rightArm = arr[arr.length-1]; }
+    else if (arr.length === 1) state.rightArm = arr[0];
+  }
+  if (p.item) state.props = [p.item];
+  if (!state.leftEye && !state.mouth && !state.rightEye){ /* 兜底 */
+    state.leftEye = '´'; state.rightEye = '`'; state.mouth = 'ω';
+  }
+  render();
+}
+
+/* ================= 复制 / 收藏 / 提示 ================= */
+let toastTimer = null;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+async function copyText(txt){
+  if (!txt){ toast('先拼一个再复制嘛 (｡•̀ᴗ-)✧'); return; }
+  try { await navigator.clipboard.writeText(txt); toast('已复制 ' + txt); return; } catch(e){}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove();
+    if (ok){ toast('已复制 ' + txt); return; }
+  } catch(e){}
+  const inp = $('#faceInput'); inp.focus(); inp.select();
+  toast('浏览器拦截了复制，请按 Ctrl+C');
+}
+
+function saveFace(face){
+  if (!face) return;
+  SAVED = SAVED.filter(f => f !== face);
+  SAVED.unshift(face);
+  SAVED = SAVED.slice(0, 80);
+  persist(); updateSavedCount();
+  if (!$('#page-saved').hidden) renderSaved();
+}
+
+/* ================= 事件 ================= */
+function switchPage(page){
+  ['build','gallery','saved'].forEach(p => { $('#page-' + p).hidden = (p !== page); });
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.page === page));
+  if (page === 'gallery') renderGallery();
+  if (page === 'saved') renderSaved();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function openTab(tab){
+  activeTab = tab; libQuery = ''; $('#libSearch').value = '';
+  renderLib();
+  const grid = $('#libGrid');
+  if (grid) grid.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+function wire(){
+  document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => switchPage(b.dataset.page)));
+  $('#btnRandom').addEventListener('click', () => { randomAll(); toast('新出炉 → ' + buildFace()); });
+  $('#btnClear').addEventListener('click', () => { clearSlots(); render(); toast('已清空，重新开始拼吧'); });
+  $('#btnCopy').addEventListener('click', () => { copyText(buildFace()); saveFace(buildFace()); });
+  $('#btnStar').addEventListener('click', () => { saveFace(buildFace()); toast('已收藏 ⭐'); });
+  $('#btnClearSaved').addEventListener('click', () => { SAVED = []; persist(); renderSaved(); updateSavedCount(); toast('收藏已清空'); });
+  $('#preview').addEventListener('click', () => { const r = document.createRange(); r.selectNodeContents($('#preview')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
+  $('#autoFrame').addEventListener('change', e => { state.autoFrame = e.target.checked; render(); });
+  $('#sizeUp').addEventListener('click', () => { state.size = Math.min(72, state.size + 4); render(); });
+  $('#sizeDown').addEventListener('click', () => { state.size = Math.max(18, state.size - 4); render(); });
+
+  /* 槽位交互 */
+  $('#slotRow').addEventListener('click', e => {
+    const mini = e.target.closest('.mini');
+    const slot = e.target.closest('.slot');
+    if (!slot) return;
+    const key = slot.dataset.key;
+    if (mini){
+      if (mini.dataset.act === 'rand') randomSlot(key);
+      else { state[key] = ''; render(); }
+      return;
+    }
+    const def = SLOTS.find(s => s.key === key);
+    openTab(def.tab);
+    if (key === 'leftEye'){ modes.eye = 'left'; }
+    else if (key === 'rightEye'){ modes.eye = 'right'; }
+    else if (key === 'leftArm'){ modes.arm = 'left'; }
+    else if (key === 'rightArm'){ modes.arm = 'right'; }
+    else if (key === 'leftCheek'){ modes.cheek = 'left'; }
+    else if (key === 'rightCheek'){ modes.cheek = 'right'; }
+    renderLibModes();
+  });
+
+  /* 道具/尾饰/环绕 */
+  document.body.addEventListener('click', e => {
+    const x = e.target.closest('.chip .x');
+    if (x){ state[x.dataset.list].splice(+x.dataset.i, 1); render(); return; }
+    const fl = e.target.closest('.flankchip');
+    if (fl){ state.flank = fl.dataset.flank; render(); return; }
+  });
+
+  /* 情绪速拼 */
+  $('#presetRow').innerHTML = PRESETS.map((p, i) =>
+    '<button class="preset" data-i="' + i + '">' + p.emoji + ' <b>' + p.label + '</b></button>').join('');
+  $('#presetRow').addEventListener('click', e => {
+    const b = e.target.closest('.preset');
+    if (b){ applyPreset(PRESETS[+b.dataset.i]); }
+  });
+
+  /* 组件库 */
+  $('#libTabs').addEventListener('click', e => {
+    const t = e.target.closest('[data-tab]');
+    if (t){ activeTab = t.dataset.tab; renderLib(); }
+  });
+  $('#libMode').addEventListener('click', e => {
+    const m = e.target.closest('[data-mkey]');
+    if (m){ modes[m.dataset.mkey] = m.dataset.mval; renderLibModes(); }
+  });
+  $('#libGrid').addEventListener('click', e => {
+    const c = e.target.closest('.comp');
+    if (c && currentItems[+c.dataset.i]) currentItems[+c.dataset.i].act();
+  });
+  $('#libSearch').addEventListener('input', e => { libQuery = e.target.value.trim(); renderLibGrid(); });
+
+  /* 图鉴 */
+  const moods = {}; KM.forEach(k => { moods[k[1]] = (moods[k[1]] || 0) + 1; });
+  $('#gMood').innerHTML = '<option value="">全部情绪</option>' +
+    Object.entries(moods).sort((a, b) => b[1] - a[1]).map(([m, n]) =>
+      '<option value="' + esc(m) + '">' + esc(MOOD_CN[m] || m) + '（' + n + '）</option>').join('');
+  $('#gSearch').addEventListener('input', renderGallery);
+  $('#gMood').addEventListener('change', renderGallery);
+  $('#galleryGrid').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.classList.contains('gface')){ const k = currentKM[+b.dataset.i]; copyText(k[0]); saveFace(k[0]); return; }
+    const k = currentKM[+b.dataset.i];
+    if (b.dataset.act === 'copy'){ copyText(k[0]); saveFace(k[0]); }
+    else if (b.dataset.act === 'draft'){ loadAsDraft(k); switchPage('build'); toast('已拆为底稿，继续改装吧 🧩'); }
+  });
+
+  /* 收藏 */
+  $('#savedGrid').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.classList.contains('sface')) copyText(SAVED[+b.dataset.i]);
+    else if (b.classList.contains('sx')){ SAVED.splice(+b.dataset.i, 1); persist(); renderSaved(); updateSavedCount(); }
+  });
+}
+
+/* ================= 启动 ================= */
+function init(){
+  $('#subTitle').textContent = COMPS.length + ' 个组件 · ' + KM.length + ' 个图鉴颜文字 · 无限组合';
+  $('#ftComps').textContent = COMPS.length;
+  $('#ftKm').textContent = KM.length;
+  $('#libCount').textContent = '共 ' + COMPS.length + ' 个组件';
+  // 背景水印
+  const marks = ['ヽ(◕ヮ◕)ﾉ✧','(≧▽≦)','(╯°□°）╯︵ ┻━┻','(づ｡◕‿‿◕｡)づ','(っ˘̩╭╮˘̩)っ','ʕ•ᴥ•ʔ','( ˘ ³˘)♥','♪(´▽｀)','Σ(°△°|||)','(¬‿¬)','(/Header)'.replace('Header','T▽T'),'☆*:.｡.o(≧▽≦)o.｡.:*☆'];
+  $('#bg').innerHTML = marks.map((m, i) => {
+    const top = (i * 19 + 6) % 92, left = (i * 37 + 4) % 88, size = 22 + (i * 13) % 34;
+    return '<span style="top:' + top + '%;left:' + left + '%;font-size:' + size + 'px">' + esc(m) + '</span>';
+  }).join('');
+  // 初始示例
+  state.leftEar = '('; state.rightEar = ')'; state.leftEye = '´'; state.rightEye = '`'; state.mouth = 'ω';
+  wire();
+  renderLib();
+  render();
+  updateSavedCount();
+}
+init();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a33838460e03f91e',t:'MTc4ODEzOTMwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

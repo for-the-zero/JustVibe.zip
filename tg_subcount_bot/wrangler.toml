@@ -1,0 +1,23 @@
+name = "tg-subcount-bot"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+
+[triggers]
+# 每天 09:00（北京时间）检测到期，进入提醒期则每天提醒
+crons = ["0 1 * * *"]
+
+[vars]
+# Bot Token（更安全的做法：npx wrangler secret put BOT_TOKEN，然后删掉这一行）
+BOT_TOKEN = "8253654793:AAG2V6LZcBzMqC1fwEVrvrVFarzyZUieJf8"
+# 允许使用 bot 的用户名（不含 @）
+ALLOWED_USERNAME = "for_the_zero"
+# Mini App 面板地址（Telegram 要求 https）
+WEB_APP_URL = "https://tg-subcount-bot.forthezero.workers.dev"
+# Webhook 验证密钥：需与 setWebhook 时传的 secret_token 一致
+# 先 npx wrangler secret put WEBHOOK_SECRET，再把同一个值填这里
+# （或反过来：把值写进 secret，setWebhook 用同一个值）
+WEBHOOK_SECRET = ""
+
+[[kv_namespaces]]
+binding = "TG_SUBBOT"
+id = "f2223a765a5c4a54b6d35424fae498ed"

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZapStartTab Settings</title>
+    <link rel="stylesheet" href="./options.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>ZapStartTab</h1>
+            <p>Settings & Guide</p>
+        </header>
+
+        <section id="guide">
+            <h2>How to Use</h2>
+            <div class="guide-card">
+                <div class="guide-step">
+                    <div class="guide-key">A</div>
+                    <div>
+                        <strong>Quick Open</strong>
+                        <p>Press any key to instantly open its primary link.</p>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-key">A</div>
+                    <div>
+                        <strong>Hold & Select</strong>
+                        <p>Hold a key to show the link panel, then use your mouse to pick a secondary link before releasing.</p>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-keybig"><span class="shift-badge">Shift</span></div>
+                    <div>
+                        <strong>Shift + Key</strong>
+                        <p>Hold Shift to reveal the keyboard overlay, then press a key. Release Shift to open the selected link.</p>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-keybig">Right-click</div>
+                    <div>
+                        <strong>Edit Shortcuts</strong>
+                        <p>Shift + right-click any key to edit its primary and secondary links.</p>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-key">Esc</div>
+                    <div>
+                        <strong>Cancel</strong>
+                        <p>Press Escape to close the link panel or the edit modal without navigating.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="data">
+            <h2>Shortcut Data</h2>
+            <div class="data-card">
+                <button id="export-btn">Export as JSON</button>
+                <button id="import-btn">Import from JSON</button>
+                <input type="file" id="import-file" accept=".json" hidden>
+                <button id="reset-btn" class="danger">Reset All Shortcuts</button>
+            </div>
+            <div id="status"></div>
+        </section>
+
+        <footer>
+            <p>ZapStartTab</p>
+        </footer>
+    </div>
+    <script src="./options.js"></script>
+</body>
+</html>
