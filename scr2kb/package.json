@@ -1,0 +1,9 @@
+{
+  "name": "sc2key",
+  "version": "1.0.0",
+  "description": "手机触控映射电脑按键",
+  "scripts": {
+    "start": "bun run server.ts"
+  },
+  "dependencies": {}
+}

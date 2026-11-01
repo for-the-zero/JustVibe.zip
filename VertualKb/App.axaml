@@ -1,0 +1,112 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="VertualKb.App">
+  <Application.Styles>
+    <StyleInclude Source="avares://Avalonia.Themes.Fluent/FluentTheme.axaml"/>
+
+    <!--
+      自定义完整模板：背景铺满整个格子，尺寸只由布局的格子和 Margin 决定，
+      不受 Fluent 默认按钮的 Padding / MinWidth 等影响。
+    -->
+    <Style Selector="Button.kb">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="root" Background="{TemplateBinding Background}"
+                  CornerRadius="{TemplateBinding CornerRadius}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Setter Property="Background" Value="#2EFFFFFF"/>
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Setter Property="CornerRadius" Value="5"/>
+      <Setter Property="FontSize" Value="30"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI, Microsoft YaHei UI"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="MinWidth" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Margin" Value="4"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="VerticalAlignment" Value="Stretch"/>
+    </Style>
+    <Style Selector="Button.kb:pointerover /template/ Border#root">
+      <Setter Property="Background" Value="#45FFFFFF"/>
+    </Style>
+    <Style Selector="Button.kb:pressed /template/ Border#root">
+      <Setter Property="Background" Value="#66FFFFFF"/>
+    </Style>
+
+    <!-- 功能键（更深、字稍小） -->
+    <Style Selector="Button.kb.special">
+      <Setter Property="Background" Value="#3C000000"/>
+      <Setter Property="FontSize" Value="21"/>
+      <Setter Property="FontWeight" Value="Normal"/>
+    </Style>
+    <Style Selector="Button.kb.special:pointerover /template/ Border#root">
+      <Setter Property="Background" Value="#55000000"/>
+    </Style>
+    <Style Selector="Button.kb.special:pressed /template/ Border#root">
+      <Setter Property="Background" Value="#70000000"/>
+    </Style>
+
+    <!-- 激活态（Shift / Ctrl / Alt / Win / Caps）：系统强调色 -->
+    <Style Selector="Button.kb.active">
+      <Setter Property="Background" Value="#E60078D4"/>
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+    <Style Selector="Button.kb.active:pointerover /template/ Border#root">
+      <Setter Property="Background" Value="#1A86DA"/>
+    </Style>
+    <Style Selector="Button.kb.active:pressed /template/ Border#root">
+      <Setter Property="Background" Value="#0F6EB8"/>
+    </Style>
+
+    <!-- 回车等主操作键 -->
+    <Style Selector="Button.kb.accent">
+      <Setter Property="Background" Value="#E60067C0"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="Button.kb.accent:pointerover /template/ Border#root">
+      <Setter Property="Background" Value="#1A78D4"/>
+    </Style>
+    <Style Selector="Button.kb.accent:pressed /template/ Border#root">
+      <Setter Property="Background" Value="#005AA8"/>
+    </Style>
+
+    <!-- 顶栏小按钮 -->
+    <Style Selector="Button.bar">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="root" Background="{TemplateBinding Background}"
+                  CornerRadius="{TemplateBinding CornerRadius}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Setter Property="Background" Value="#3C000000"/>
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Setter Property="CornerRadius" Value="5"/>
+      <Setter Property="FontSize" Value="18"/>
+      <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI, Microsoft YaHei UI"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="MinWidth" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Margin" Value="2"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="VerticalAlignment" Value="Stretch"/>
+    </Style>
+    <Style Selector="Button.bar:pointerover /template/ Border#root">
+      <Setter Property="Background" Value="#55000000"/>
+    </Style>
+    <Style Selector="Button.bar:pressed /template/ Border#root">
+      <Setter Property="Background" Value="#70000000"/>
+    </Style>
+  </Application.Styles>
+</Application>
