@@ -1,0 +1,132 @@
+/* m3e-img-viewer */
+.img-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: #000;
+  overflow: hidden;
+  font-family: 'Wanted Sans Std Variable', 'Noto Sans SC', sans-serif;
+  animation: iv-in .18s ease-out;
+}
+@keyframes iv-in {
+  from { opacity: 0; }
+}
+.img-viewer[hidden] { display: none; }
+.img-viewer:fullscreen { width: 100%; height: 100%; }
+.img-viewer .iv-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+.img-viewer .iv-stage:focus { outline: none; }
+.img-viewer .iv-loading {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.img-viewer .iv-title {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 16px;
+  color: #fff;
+  background: linear-gradient(#000000b3, transparent);
+  text-align: center;
+  font-size: .85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.img-viewer .iv-nav {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  pointer-events: none;
+}
+.img-viewer .iv-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+}
+.img-viewer .iv-bar m3e-card {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.img-viewer .iv-card-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+.img-viewer .iv-bar m3e-button-group {
+  flex: 1 1 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
+}
+.img-viewer .iv-count,
+.img-viewer .iv-zoom {
+  flex: 0 0 auto;
+  color: #fff;
+  font-size: .8rem;
+  min-width: 3.5em;
+  text-align: center;
+}
+.img-viewer .iv-thumbs {
+  position: absolute;
+  left: 50%;
+  bottom: 74px;
+  display: flex;
+  gap: 6px;
+  max-width: min(88vw, 860px);
+  padding: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  transform: translateX(-50%);
+  scrollbar-width: none;
+}
+.img-viewer .iv-thumbs[hidden] { display: none; }
+.img-viewer .iv-thumb {
+  flex: 0 0 auto;
+  width: 68px;
+  height: 46px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #00000066;
+  opacity: .5;
+  transition: opacity .15s ease-out, border-color .15s ease-out;
+}
+.img-viewer .iv-thumb.on {
+  opacity: 1;
+  border-color: #fff;
+}
+.img-viewer .iv-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.img-viewer .iv-arrow {
+  pointer-events: auto;
+  background: #00000080;
+  border-radius: 50%;
+}

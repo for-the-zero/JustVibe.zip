@@ -1,0 +1,15 @@
+{
+  "name": "m3e-img-mask",
+  "version": "0.1.1",
+  "type": "module",
+  "main": "./src/index.js",
+  "module": "./src/index.js",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "@m3e/web": "^2.8.2",
+    "lit": "^3.3.2"
+  }
+}
